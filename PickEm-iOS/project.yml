@@ -1,0 +1,116 @@
+name: PickEm
+options:
+  bundleIdPrefix: com.pickem
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    DEVELOPMENT_TEAM: ""
+
+configs:
+  Debug-MockLocal: debug
+  Debug-MockBackend: debug
+  Debug-Live: debug
+  Release: release
+
+targets:
+  PickEm:
+    type: application
+    platform: iOS
+    sources:
+      - path: PickEm
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pickem.PickEm
+        INFOPLIST_FILE: PickEm/Info.plist
+      configs:
+        Debug-MockLocal:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG MOCK_LOCAL
+        Debug-MockBackend:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG MOCK_BACKEND
+        Debug-Live:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+    entitlements:
+      path: PickEm/PickEm.entitlements
+    dependencies: []
+
+  PickEmTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PickEmTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pickem.PickEmTests
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG MOCK_LOCAL
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: PickEm
+
+schemes:
+  MockLocal:
+    build:
+      targets:
+        PickEm: all
+      parallelizeBuild: true
+    run:
+      config: Debug-MockLocal
+    test:
+      config: Debug-MockLocal
+      targets:
+        - PickEmTests
+    profile:
+      config: Debug-MockLocal
+    analyze:
+      config: Debug-MockLocal
+    archive:
+      config: Release
+
+  MockBackend:
+    build:
+      targets:
+        PickEm: all
+    run:
+      config: Debug-MockBackend
+      environmentVariables:
+        DEV_SERVER_URL:
+          value: "http://localhost:8000"
+          isEnabled: true
+    test:
+      config: Debug-MockBackend
+      targets:
+        - PickEmTests
+    profile:
+      config: Debug-MockBackend
+    analyze:
+      config: Debug-MockBackend
+    archive:
+      config: Release
+
+  Live:
+    build:
+      targets:
+        PickEm: all
+    run:
+      config: Debug-Live
+      environmentVariables:
+        API_BASE_URL:
+          value: "https://api.pickem.app"
+          isEnabled: true
+    test:
+      config: Debug-Live
+      targets:
+        - PickEmTests
+    profile:
+      config: Debug-Live
+    analyze:
+      config: Debug-Live
+    archive:
+      config: Release

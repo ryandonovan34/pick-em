@@ -1,0 +1,1065 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D205E667186041043D81B6D /* StandingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953D8913A11755BB70F23A8F /* StandingsViewModel.swift */; };
+		0EED86B42D1FE237C7EE48C9 /* LocalCacheServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */; };
+		1272FB5CCAC646294668AD20 /* MockGroupRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC44B9AEBFB15D616A4FA6AD /* MockGroupRepository.swift */; };
+		141628A0D462AD4F1D818B54 /* NetworkServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */; };
+		14A1BD605CA2824A786710F8 /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CAC68255CCA378A07701DE7 /* Game.swift */; };
+		155A7509CA7975B51343185E /* SlateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E71649EEEB1159560FF75E6 /* SlateViewModel.swift */; };
+		20544571774C5227AA60A15F /* MockPickRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8878EE64015EE1764C25B3A /* MockPickRepository.swift */; };
+		22134985D130995648A17DEC /* RepositoryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F365891A3A9F2AFA760567 /* RepositoryError.swift */; };
+		2724AB9B268A848DAF65212B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */; };
+		2983F35B69834B4E8740E317 /* ChallengeMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C15D718AAB76F405474CB71 /* ChallengeMode.swift */; };
+		2A0F6611AC7E9323F0C40C11 /* PickDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7742863673DE58703A5BAD74 /* PickDTO.swift */; };
+		2EEBA7D9500A8E504D35F558 /* GroupRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */; };
+		2F7F461C59E130F0859E2EA4 /* LiveGameRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F478E454C908225D74A03199 /* LiveGameRepository.swift */; };
+		3174255EDC7DAEF5F8FF37BB /* GroupModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F928793124D6234F0C6B452 /* GroupModelTests.swift */; };
+		320DD41DAE867874BD40E985 /* DTOMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA35F77BE6EF74273B430930 /* DTOMappingTests.swift */; };
+		3B22547F8A065F2A626E2001 /* StandingDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5854F0C060B472B83CBA5E75 /* StandingDTO.swift */; };
+		3D21163D526F9175B5B00E54 /* UserDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D35F07DDCAF0EB4D1E310E0 /* UserDTO.swift */; };
+		3D2544A9D5DC6D4DED26BAAE /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9836E2342C79CCC13D00C2 /* AuthViewModel.swift */; };
+		3E4BF7CE1100C20111A00069 /* PickSubmissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D734A4C221A2060852C0A077 /* PickSubmissionView.swift */; };
+		4149313807AAEF3844F912CE /* MockStandingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AD3316F07DE492EC11A3B30 /* MockStandingsRepository.swift */; };
+		4469F44EC582C9F872D5FAC3 /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EC813DDF70DBC6EF723C4E /* StandingsView.swift */; };
+		45CE328B61ED2DCF956F421F /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2866ABDC671570E10A00EC02 /* MockData.swift */; };
+		46463A713A0C97CDF3EAC569 /* PickResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6843217668B288F4A8358356 /* PickResultTests.swift */; };
+		4AA0473B18AD630364DB75D8 /* Standing.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0FB210A11F6FBFB01FD102 /* Standing.swift */; };
+		4DF453E289C1126AEFCF8FE7 /* LiveAuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB31F6243FF557D209BBF836 /* LiveAuthRepository.swift */; };
+		537E89EAFCED3908D1593DDC /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47ADD3DB80E2599CBFF4036E /* TokenStore.swift */; };
+		5A2D512AEC70F59338D3CEB2 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F8451E5EEF0B404164664 /* LoadingView.swift */; };
+		5B92150C6A1F46FEB9618904 /* Teams.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C2F8C80FD04D46AA9701B1 /* Teams.swift */; };
+		60706BD42EB4D1557C664860 /* JoinGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168B379F6867F024B37E97DE /* JoinGroupView.swift */; };
+		61EC8EFD61485284C36F6CDD /* CreateGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6673147D90209B00C430C8C8 /* CreateGroupView.swift */; };
+		62AF3FAD8B0CA0D033116668 /* LocalCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF730E36264DF5811CF9234 /* LocalCacheService.swift */; };
+		69D4AA893E1AFDC251B09A77 /* PickResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F1D56BA1FDC9845B63F552A /* PickResult.swift */; };
+		6C1F9D0187AF5B8006CCFFEE /* GameRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 189915111EB88E4423CE59B4 /* GameRowView.swift */; };
+		6C895703D680A4BD2DAC1C3F /* StandingModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C32113B517F7F2B73FB5A5F /* StandingModelTests.swift */; };
+		75FB55A82769C07E395303B6 /* PickViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B040B6F9766D9B9B0BE0B55E /* PickViewModel.swift */; };
+		76622C9186285A2064E383D1 /* GameModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3F70F9C6E003138C336D944 /* GameModelTests.swift */; };
+		76F2EB8DCBB16E46AD780CB7 /* StandingsRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67AFE135DC090BB00A6D1773 /* StandingsRepositoryProtocol.swift */; };
+		7B8164E7A3EB5386FCAFBF55 /* GroupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96508B9E3F15DEE8EB93CEB /* GroupDetailView.swift */; };
+		7C3E72D73937D93360188D77 /* SlateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F7FA2ADD89B55E068FC038 /* SlateView.swift */; };
+		831A440889EC9D02A04B7832 /* Pick.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC883552248090EB5243E393 /* Pick.swift */; };
+		8F2153D53448A002550CE630 /* Week.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49A48EF73265DF1DD72E13B /* Week.swift */; };
+		935F0B1AF79F65B5995A2787 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8871C771E4A8742F15AC7E6 /* LoginView.swift */; };
+		9982E80B6E674C19B3A129AE /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F63509CD6793B9A50C52E0E /* RegisterView.swift */; };
+		9AF78A0C35058EE3C6347192 /* GameRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E47D4DFEF7C28CD00485709A /* GameRepositoryProtocol.swift */; };
+		A00F7C30D4A0538847D15AB5 /* MockAuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809FA6858D7B03BCE51BD4FE /* MockAuthRepository.swift */; };
+		A21BFCA4C856333861CEDD31 /* SlateViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */; };
+		A3B5C7D9E1F2A3B4C5D6E7F8 /* NetworkLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C6D8E0F1A2B3C5D6E7F8A9 /* NetworkLogger.swift */; };
+		A401756FBAFC5EB76812AF18 /* Sport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E90560FB7402E7631A439F8 /* Sport.swift */; };
+		A7C8551F48442846F8C9195F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762A32CF972C9AB24487770F /* RootView.swift */; };
+		A808ADD831619CD77C9D1D48 /* ErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20912673D1128032D480806 /* ErrorView.swift */; };
+		A918F19C4E30E0F7E89A9023 /* PickViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1445D09848B29DF7277C421 /* PickViewModelTests.swift */; };
+		A9451070C04871831F9D0713 /* PickRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DB9DAF48866EF58FC5A79B /* PickRepositoryProtocol.swift */; };
+		AA8F6C912FD1A65800AEE67D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8F6C8F2FD1A65800AEE67D /* Theme.swift */; };
+		AA8F6C942FD1A68900AEE67D /* OnLoadModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8F6C932FD1A68900AEE67D /* OnLoadModifier.swift */; };
+		B55B17BEB3FFE7329E0BA73A /* LiveGroupRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8034C5C835686059AC3E6B17 /* LiveGroupRepository.swift */; };
+		BA906F4848D42E9C7BAB08FD /* LivePickRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE33C5E30EAD502DD3B03F24 /* LivePickRepository.swift */; };
+		BBD1E36AD9B7E66DF8C2DA4D /* GroupViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DEF88BC8F88495A6E32879F /* GroupViewModel.swift */; };
+		C126E0DB3574CDC7B0C43ECA /* NetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F916F904C30C097ECCA9C1 /* NetworkService.swift */; };
+		C13BCBD99D543BE510659267 /* Group.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F29AA2B2832F48974C7B20 /* Group.swift */; };
+		C810395DCF8F270BB79E7BB5 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4386FBDEB93B4F44C79C878 /* AppDependencies.swift */; };
+		CB4057A156705A23C3758C26 /* PickEmApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FEEDB752B727B4613F163FD /* PickEmApp.swift */; };
+		E2ECD8DBB7199BBCD64E7DC1 /* GroupViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB3CA37451BAFD26990BC5D /* GroupViewModelTests.swift */; };
+		E3D9C5470E2EA9B3AA24CC46 /* GroupListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688EE356E6C22CDCD243D76E /* GroupListView.swift */; };
+		E45DEAC3A37E33FA643B3C23 /* GameDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83456E4A4FBD6F0A0520FEDE /* GameDTO.swift */; };
+		E83AAA29278AE6CFE19C7399 /* AuthViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BBDF8492797B0BCEC000402 /* AuthViewModelTests.swift */; };
+		EB58AAA91964186AD7853EDD /* MockPickRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445897E4483DF71974A7EAEF /* MockPickRepositoryTests.swift */; };
+		EF4E8AEFB183C93C9CF1F644 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BA60BFB60C4A47206DCC46 /* User.swift */; };
+		F6B310FF01A72CA0918F7983 /* StandingsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */; };
+		F87C264949062A9D3744C79F /* MockGameRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0D57B7DD5109CC81C39B96 /* MockGameRepository.swift */; };
+		F87D820989961FDEF81BFCD0 /* LiveStandingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0615F37B2115B7019F360F /* LiveStandingsRepository.swift */; };
+		FC64006DAB36BBB322C59777 /* AuthRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF03B1FAFFA203217B64A3C4 /* AuthRepositoryProtocol.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		EE06DAD91A6E1AACF4716859 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A57C1C615FC2D94026D8D51 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 55392D36CC129650B1537019;
+			remoteInfo = PickEm;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		001F8451E5EEF0B404164664 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
+		0C0615F37B2115B7019F360F /* LiveStandingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveStandingsRepository.swift; sourceTree = "<group>"; };
+		12EC813DDF70DBC6EF723C4E /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
+		168B379F6867F024B37E97DE /* JoinGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinGroupView.swift; sourceTree = "<group>"; };
+		189915111EB88E4423CE59B4 /* GameRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameRowView.swift; sourceTree = "<group>"; };
+		1DEF88BC8F88495A6E32879F /* GroupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModel.swift; sourceTree = "<group>"; };
+		27F916F904C30C097ECCA9C1 /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
+		2866ABDC671570E10A00EC02 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		2BB3CA37451BAFD26990BC5D /* GroupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModelTests.swift; sourceTree = "<group>"; };
+		2F1D56BA1FDC9845B63F552A /* PickResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickResult.swift; sourceTree = "<group>"; };
+		3BBDF8492797B0BCEC000402 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
+		445897E4483DF71974A7EAEF /* MockPickRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPickRepositoryTests.swift; sourceTree = "<group>"; };
+		47ADD3DB80E2599CBFF4036E /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkServiceTests.swift; sourceTree = "<group>"; };
+		4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PickEm.entitlements; sourceTree = "<group>"; };
+		4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateViewModelTests.swift; sourceTree = "<group>"; };
+		5854F0C060B472B83CBA5E75 /* StandingDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingDTO.swift; sourceTree = "<group>"; };
+		58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRepositoryProtocol.swift; sourceTree = "<group>"; };
+		5AD3316F07DE492EC11A3B30 /* MockStandingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockStandingsRepository.swift; sourceTree = "<group>"; };
+		5F63509CD6793B9A50C52E0E /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		6673147D90209B00C430C8C8 /* CreateGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGroupView.swift; sourceTree = "<group>"; };
+		67AFE135DC090BB00A6D1773 /* StandingsRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsRepositoryProtocol.swift; sourceTree = "<group>"; };
+		67BA60BFB60C4A47206DCC46 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		6843217668B288F4A8358356 /* PickResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickResultTests.swift; sourceTree = "<group>"; };
+		688EE356E6C22CDCD243D76E /* GroupListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListView.swift; sourceTree = "<group>"; };
+		6B9836E2342C79CCC13D00C2 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		6C15D718AAB76F405474CB71 /* ChallengeMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChallengeMode.swift; sourceTree = "<group>"; };
+		6F928793124D6234F0C6B452 /* GroupModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupModelTests.swift; sourceTree = "<group>"; };
+		6FEEDB752B727B4613F163FD /* PickEmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickEmApp.swift; sourceTree = "<group>"; };
+		762A32CF972C9AB24487770F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		7742863673DE58703A5BAD74 /* PickDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickDTO.swift; sourceTree = "<group>"; };
+		7C32113B517F7F2B73FB5A5F /* StandingModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingModelTests.swift; sourceTree = "<group>"; };
+		7D35F07DDCAF0EB4D1E310E0 /* UserDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDTO.swift; sourceTree = "<group>"; };
+		7E90560FB7402E7631A439F8 /* Sport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sport.swift; sourceTree = "<group>"; };
+		7F301C6C003059FC5E08752B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8034C5C835686059AC3E6B17 /* LiveGroupRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveGroupRepository.swift; sourceTree = "<group>"; };
+		809FA6858D7B03BCE51BD4FE /* MockAuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAuthRepository.swift; sourceTree = "<group>"; };
+		83456E4A4FBD6F0A0520FEDE /* GameDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDTO.swift; sourceTree = "<group>"; };
+		8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		8CAC68255CCA378A07701DE7 /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
+		91F365891A3A9F2AFA760567 /* RepositoryError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryError.swift; sourceTree = "<group>"; };
+		953D8913A11755BB70F23A8F /* StandingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsViewModel.swift; sourceTree = "<group>"; };
+		98F29AA2B2832F48974C7B20 /* Group.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Group.swift; sourceTree = "<group>"; };
+		997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsViewModelTests.swift; sourceTree = "<group>"; };
+		9E71649EEEB1159560FF75E6 /* SlateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateViewModel.swift; sourceTree = "<group>"; };
+		A1445D09848B29DF7277C421 /* PickViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickViewModelTests.swift; sourceTree = "<group>"; };
+		A49A48EF73265DF1DD72E13B /* Week.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Week.swift; sourceTree = "<group>"; };
+		A6F7FA2ADD89B55E068FC038 /* SlateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateView.swift; sourceTree = "<group>"; };
+		A96508B9E3F15DEE8EB93CEB /* GroupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailView.swift; sourceTree = "<group>"; };
+		AA8F6C8F2FD1A65800AEE67D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		AA8F6C932FD1A68900AEE67D /* OnLoadModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnLoadModifier.swift; sourceTree = "<group>"; };
+		AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCacheServiceTests.swift; sourceTree = "<group>"; };
+		AF03B1FAFFA203217B64A3C4 /* AuthRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepositoryProtocol.swift; sourceTree = "<group>"; };
+		AFF730E36264DF5811CF9234 /* LocalCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCacheService.swift; sourceTree = "<group>"; };
+		B040B6F9766D9B9B0BE0B55E /* PickViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickViewModel.swift; sourceTree = "<group>"; };
+		B20912673D1128032D480806 /* ErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorView.swift; sourceTree = "<group>"; };
+		B4386FBDEB93B4F44C79C878 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		B4C6D8E0F1A2B3C5D6E7F8A9 /* NetworkLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLogger.swift; sourceTree = "<group>"; };
+		BB5B613EEBAF542B2C0D2417 /* PickEmTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PickEmTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE33C5E30EAD502DD3B03F24 /* LivePickRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePickRepository.swift; sourceTree = "<group>"; };
+		C8871C771E4A8742F15AC7E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		C8878EE64015EE1764C25B3A /* MockPickRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPickRepository.swift; sourceTree = "<group>"; };
+		CB31F6243FF557D209BBF836 /* LiveAuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAuthRepository.swift; sourceTree = "<group>"; };
+		D3F70F9C6E003138C336D944 /* GameModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModelTests.swift; sourceTree = "<group>"; };
+		D734A4C221A2060852C0A077 /* PickSubmissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickSubmissionView.swift; sourceTree = "<group>"; };
+		DC215BC84D5EC70A91BF28BA /* PickEm.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PickEm.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC883552248090EB5243E393 /* Pick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pick.swift; sourceTree = "<group>"; };
+		E47D4DFEF7C28CD00485709A /* GameRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameRepositoryProtocol.swift; sourceTree = "<group>"; };
+		EB0D57B7DD5109CC81C39B96 /* MockGameRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockGameRepository.swift; sourceTree = "<group>"; };
+		EC44B9AEBFB15D616A4FA6AD /* MockGroupRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockGroupRepository.swift; sourceTree = "<group>"; };
+		F3DB9DAF48866EF58FC5A79B /* PickRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickRepositoryProtocol.swift; sourceTree = "<group>"; };
+		F478E454C908225D74A03199 /* LiveGameRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveGameRepository.swift; sourceTree = "<group>"; };
+		F9C2F8C80FD04D46AA9701B1 /* Teams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Teams.swift; sourceTree = "<group>"; };
+		FA35F77BE6EF74273B430930 /* DTOMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOMappingTests.swift; sourceTree = "<group>"; };
+		FF0FB210A11F6FBFB01FD102 /* Standing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Standing.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		08CD17D8A6BE3073C1AF3400 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				C8871C771E4A8742F15AC7E6 /* LoginView.swift */,
+				5F63509CD6793B9A50C52E0E /* RegisterView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		0DB3C696A737B8855F376C06 /* ServiceTests */ = {
+			isa = PBXGroup;
+			children = (
+				AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */,
+				48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */,
+			);
+			path = ServiceTests;
+			sourceTree = "<group>";
+		};
+		12D4DA8D76E13A28AB5BB85D /* PickEm */ = {
+			isa = PBXGroup;
+			children = (
+				7F301C6C003059FC5E08752B /* Info.plist */,
+				4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */,
+				84B19E33B5BC2FB8D2C06DB7 /* App */,
+				69D7B4B8D16E3286D83F01B3 /* Domain */,
+				AC89C020F616C135D5EF2E0C /* DTOs */,
+				CE5920F1DE36BB7168EF5FD3 /* Repositories */,
+				5BD2FA0A630894A85E92FBFF /* Services */,
+				AA8F6C902FD1A65800AEE67D /* UI */,
+				A1A7414449056E4AA3EC1DCE /* ViewModels */,
+				F9C2F8C80FD04D46AA9701B1 /* Teams.swift */,
+				727F2CCC6F990CB873733383 /* Views */,
+			);
+			path = PickEm;
+			sourceTree = "<group>";
+		};
+		1B486A0AA959BD284E19F05C /* RepositoryTests */ = {
+			isa = PBXGroup;
+			children = (
+				445897E4483DF71974A7EAEF /* MockPickRepositoryTests.swift */,
+			);
+			path = RepositoryTests;
+			sourceTree = "<group>";
+		};
+		1BA993DCB110975FD541A2E1 /* Live */ = {
+			isa = PBXGroup;
+			children = (
+				CB31F6243FF557D209BBF836 /* LiveAuthRepository.swift */,
+				F478E454C908225D74A03199 /* LiveGameRepository.swift */,
+				8034C5C835686059AC3E6B17 /* LiveGroupRepository.swift */,
+				BE33C5E30EAD502DD3B03F24 /* LivePickRepository.swift */,
+				0C0615F37B2115B7019F360F /* LiveStandingsRepository.swift */,
+			);
+			path = Live;
+			sourceTree = "<group>";
+		};
+		25B4065817E69292D3FBCAF4 /* ViewModelTests */ = {
+			isa = PBXGroup;
+			children = (
+				3BBDF8492797B0BCEC000402 /* AuthViewModelTests.swift */,
+				2BB3CA37451BAFD26990BC5D /* GroupViewModelTests.swift */,
+				A1445D09848B29DF7277C421 /* PickViewModelTests.swift */,
+				4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */,
+				997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */,
+			);
+			path = ViewModelTests;
+			sourceTree = "<group>";
+		};
+		4521243221973C98B0AC1FC7 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				AF03B1FAFFA203217B64A3C4 /* AuthRepositoryProtocol.swift */,
+				E47D4DFEF7C28CD00485709A /* GameRepositoryProtocol.swift */,
+				58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */,
+				F3DB9DAF48866EF58FC5A79B /* PickRepositoryProtocol.swift */,
+				67AFE135DC090BB00A6D1773 /* StandingsRepositoryProtocol.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		53D3F81043BB66ADFCC9D773 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				B20912673D1128032D480806 /* ErrorView.swift */,
+				001F8451E5EEF0B404164664 /* LoadingView.swift */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		56807CD4A8BF3C2B3FB0148A /* DomainModelTests */ = {
+			isa = PBXGroup;
+			children = (
+				FA35F77BE6EF74273B430930 /* DTOMappingTests.swift */,
+				D3F70F9C6E003138C336D944 /* GameModelTests.swift */,
+				6F928793124D6234F0C6B452 /* GroupModelTests.swift */,
+				6843217668B288F4A8358356 /* PickResultTests.swift */,
+				7C32113B517F7F2B73FB5A5F /* StandingModelTests.swift */,
+			);
+			path = DomainModelTests;
+			sourceTree = "<group>";
+		};
+		5BD2FA0A630894A85E92FBFF /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AFF730E36264DF5811CF9234 /* LocalCacheService.swift */,
+				B4C6D8E0F1A2B3C5D6E7F8A9 /* NetworkLogger.swift */,
+				27F916F904C30C097ECCA9C1 /* NetworkService.swift */,
+				8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		5CB7DCD01277BA9CB1B562ED /* Enums */ = {
+			isa = PBXGroup;
+			children = (
+				6C15D718AAB76F405474CB71 /* ChallengeMode.swift */,
+				2F1D56BA1FDC9845B63F552A /* PickResult.swift */,
+				7E90560FB7402E7631A439F8 /* Sport.swift */,
+			);
+			path = Enums;
+			sourceTree = "<group>";
+		};
+		68CA39F8DC707A30F1970583 /* Slate */ = {
+			isa = PBXGroup;
+			children = (
+				189915111EB88E4423CE59B4 /* GameRowView.swift */,
+				D734A4C221A2060852C0A077 /* PickSubmissionView.swift */,
+				A6F7FA2ADD89B55E068FC038 /* SlateView.swift */,
+			);
+			path = Slate;
+			sourceTree = "<group>";
+		};
+		69D7B4B8D16E3286D83F01B3 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				5CB7DCD01277BA9CB1B562ED /* Enums */,
+				97A885F963F58FF26BAE16C5 /* Models */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		727F2CCC6F990CB873733383 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				762A32CF972C9AB24487770F /* RootView.swift */,
+				08CD17D8A6BE3073C1AF3400 /* Auth */,
+				53D3F81043BB66ADFCC9D773 /* Common */,
+				7EB9505B8C0FEEBD53F85801 /* Groups */,
+				68CA39F8DC707A30F1970583 /* Slate */,
+				B6A1B1150C67E07DD11C04A7 /* Standings */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		7EB9505B8C0FEEBD53F85801 /* Groups */ = {
+			isa = PBXGroup;
+			children = (
+				6673147D90209B00C430C8C8 /* CreateGroupView.swift */,
+				A96508B9E3F15DEE8EB93CEB /* GroupDetailView.swift */,
+				688EE356E6C22CDCD243D76E /* GroupListView.swift */,
+				168B379F6867F024B37E97DE /* JoinGroupView.swift */,
+			);
+			path = Groups;
+			sourceTree = "<group>";
+		};
+		84B19E33B5BC2FB8D2C06DB7 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B4386FBDEB93B4F44C79C878 /* AppDependencies.swift */,
+				6FEEDB752B727B4613F163FD /* PickEmApp.swift */,
+				47ADD3DB80E2599CBFF4036E /* TokenStore.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		97A885F963F58FF26BAE16C5 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				8CAC68255CCA378A07701DE7 /* Game.swift */,
+				98F29AA2B2832F48974C7B20 /* Group.swift */,
+				DC883552248090EB5243E393 /* Pick.swift */,
+				FF0FB210A11F6FBFB01FD102 /* Standing.swift */,
+				67BA60BFB60C4A47206DCC46 /* User.swift */,
+				A49A48EF73265DF1DD72E13B /* Week.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		97E3766DE1437A7ACC3F94F2 = {
+			isa = PBXGroup;
+			children = (
+				12D4DA8D76E13A28AB5BB85D /* PickEm */,
+				FB4BA5746557EADEA242C1C1 /* PickEmTests */,
+				9844F6F67C26E8DCE542874F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9844F6F67C26E8DCE542874F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DC215BC84D5EC70A91BF28BA /* PickEm.app */,
+				BB5B613EEBAF542B2C0D2417 /* PickEmTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1A7414449056E4AA3EC1DCE /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				6B9836E2342C79CCC13D00C2 /* AuthViewModel.swift */,
+				1DEF88BC8F88495A6E32879F /* GroupViewModel.swift */,
+				B040B6F9766D9B9B0BE0B55E /* PickViewModel.swift */,
+				9E71649EEEB1159560FF75E6 /* SlateViewModel.swift */,
+				953D8913A11755BB70F23A8F /* StandingsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AA8F6C902FD1A65800AEE67D /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				AA8F6C922FD1A66900AEE67D /* ViewModifiers */,
+				AA8F6C8F2FD1A65800AEE67D /* Theme.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		AA8F6C922FD1A66900AEE67D /* ViewModifiers */ = {
+			isa = PBXGroup;
+			children = (
+				AA8F6C932FD1A68900AEE67D /* OnLoadModifier.swift */,
+			);
+			path = ViewModifiers;
+			sourceTree = "<group>";
+		};
+		AC89C020F616C135D5EF2E0C /* DTOs */ = {
+			isa = PBXGroup;
+			children = (
+				83456E4A4FBD6F0A0520FEDE /* GameDTO.swift */,
+				7742863673DE58703A5BAD74 /* PickDTO.swift */,
+				5854F0C060B472B83CBA5E75 /* StandingDTO.swift */,
+				7D35F07DDCAF0EB4D1E310E0 /* UserDTO.swift */,
+			);
+			path = DTOs;
+			sourceTree = "<group>";
+		};
+		B6A1B1150C67E07DD11C04A7 /* Standings */ = {
+			isa = PBXGroup;
+			children = (
+				12EC813DDF70DBC6EF723C4E /* StandingsView.swift */,
+			);
+			path = Standings;
+			sourceTree = "<group>";
+		};
+		CE5920F1DE36BB7168EF5FD3 /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				91F365891A3A9F2AFA760567 /* RepositoryError.swift */,
+				1BA993DCB110975FD541A2E1 /* Live */,
+				F40365E2F00D6413AC43B718 /* Mock */,
+				4521243221973C98B0AC1FC7 /* Protocols */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		F40365E2F00D6413AC43B718 /* Mock */ = {
+			isa = PBXGroup;
+			children = (
+				809FA6858D7B03BCE51BD4FE /* MockAuthRepository.swift */,
+				2866ABDC671570E10A00EC02 /* MockData.swift */,
+				EB0D57B7DD5109CC81C39B96 /* MockGameRepository.swift */,
+				EC44B9AEBFB15D616A4FA6AD /* MockGroupRepository.swift */,
+				C8878EE64015EE1764C25B3A /* MockPickRepository.swift */,
+				5AD3316F07DE492EC11A3B30 /* MockStandingsRepository.swift */,
+			);
+			path = Mock;
+			sourceTree = "<group>";
+		};
+		FB4BA5746557EADEA242C1C1 /* PickEmTests */ = {
+			isa = PBXGroup;
+			children = (
+				56807CD4A8BF3C2B3FB0148A /* DomainModelTests */,
+				1B486A0AA959BD284E19F05C /* RepositoryTests */,
+				0DB3C696A737B8855F376C06 /* ServiceTests */,
+				25B4065817E69292D3FBCAF4 /* ViewModelTests */,
+			);
+			path = PickEmTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		435580C5DA84036D4808013A /* PickEmTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4835D5459FC2D2A7A3195CC6 /* Build configuration list for PBXNativeTarget "PickEmTests" */;
+			buildPhases = (
+				C9FE3B3F9729AE77FF0E51ED /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DC9DDD406E3ABDB072BC2AD4 /* PBXTargetDependency */,
+			);
+			name = PickEmTests;
+			packageProductDependencies = (
+			);
+			productName = PickEmTests;
+			productReference = BB5B613EEBAF542B2C0D2417 /* PickEmTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		55392D36CC129650B1537019 /* PickEm */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2E19D2D52AE21FC2FD4221E3 /* Build configuration list for PBXNativeTarget "PickEm" */;
+			buildPhases = (
+				18D4977E5D8D08F3C58C9A1D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PickEm;
+			packageProductDependencies = (
+			);
+			productName = PickEm;
+			productReference = DC215BC84D5EC70A91BF28BA /* PickEm.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8A57C1C615FC2D94026D8D51 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					435580C5DA84036D4808013A = {
+						DevelopmentTeam = "";
+					};
+					55392D36CC129650B1537019 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = 4CB2319D005D2C338866D857 /* Build configuration list for PBXProject "PickEm" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 97E3766DE1437A7ACC3F94F2;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9844F6F67C26E8DCE542874F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				55392D36CC129650B1537019 /* PickEm */,
+				435580C5DA84036D4808013A /* PickEmTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		18D4977E5D8D08F3C58C9A1D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C810395DCF8F270BB79E7BB5 /* AppDependencies.swift in Sources */,
+				AA8F6C942FD1A68900AEE67D /* OnLoadModifier.swift in Sources */,
+				FC64006DAB36BBB322C59777 /* AuthRepositoryProtocol.swift in Sources */,
+				3D2544A9D5DC6D4DED26BAAE /* AuthViewModel.swift in Sources */,
+				2983F35B69834B4E8740E317 /* ChallengeMode.swift in Sources */,
+				61EC8EFD61485284C36F6CDD /* CreateGroupView.swift in Sources */,
+				A808ADD831619CD77C9D1D48 /* ErrorView.swift in Sources */,
+				14A1BD605CA2824A786710F8 /* Game.swift in Sources */,
+				E45DEAC3A37E33FA643B3C23 /* GameDTO.swift in Sources */,
+				9AF78A0C35058EE3C6347192 /* GameRepositoryProtocol.swift in Sources */,
+				6C1F9D0187AF5B8006CCFFEE /* GameRowView.swift in Sources */,
+				C13BCBD99D543BE510659267 /* Group.swift in Sources */,
+				7B8164E7A3EB5386FCAFBF55 /* GroupDetailView.swift in Sources */,
+				E3D9C5470E2EA9B3AA24CC46 /* GroupListView.swift in Sources */,
+				2EEBA7D9500A8E504D35F558 /* GroupRepositoryProtocol.swift in Sources */,
+				BBD1E36AD9B7E66DF8C2DA4D /* GroupViewModel.swift in Sources */,
+				60706BD42EB4D1557C664860 /* JoinGroupView.swift in Sources */,
+				4469F44EC582C9F872D5FAC3 /* StandingsView.swift in Sources */,
+				4DF453E289C1126AEFCF8FE7 /* LiveAuthRepository.swift in Sources */,
+				2F7F461C59E130F0859E2EA4 /* LiveGameRepository.swift in Sources */,
+				B55B17BEB3FFE7329E0BA73A /* LiveGroupRepository.swift in Sources */,
+				BA906F4848D42E9C7BAB08FD /* LivePickRepository.swift in Sources */,
+				F87D820989961FDEF81BFCD0 /* LiveStandingsRepository.swift in Sources */,
+				5A2D512AEC70F59338D3CEB2 /* LoadingView.swift in Sources */,
+				62AF3FAD8B0CA0D033116668 /* LocalCacheService.swift in Sources */,
+				935F0B1AF79F65B5995A2787 /* LoginView.swift in Sources */,
+				A00F7C30D4A0538847D15AB5 /* MockAuthRepository.swift in Sources */,
+				45CE328B61ED2DCF956F421F /* MockData.swift in Sources */,
+				F87C264949062A9D3744C79F /* MockGameRepository.swift in Sources */,
+				1272FB5CCAC646294668AD20 /* MockGroupRepository.swift in Sources */,
+				20544571774C5227AA60A15F /* MockPickRepository.swift in Sources */,
+				4149313807AAEF3844F912CE /* MockStandingsRepository.swift in Sources */,
+				A3B5C7D9E1F2A3B4C5D6E7F8 /* NetworkLogger.swift in Sources */,
+				C126E0DB3574CDC7B0C43ECA /* NetworkService.swift in Sources */,
+				2724AB9B268A848DAF65212B /* NotificationService.swift in Sources */,
+				831A440889EC9D02A04B7832 /* Pick.swift in Sources */,
+				2A0F6611AC7E9323F0C40C11 /* PickDTO.swift in Sources */,
+				CB4057A156705A23C3758C26 /* PickEmApp.swift in Sources */,
+				A9451070C04871831F9D0713 /* PickRepositoryProtocol.swift in Sources */,
+				69D4AA893E1AFDC251B09A77 /* PickResult.swift in Sources */,
+				3E4BF7CE1100C20111A00069 /* PickSubmissionView.swift in Sources */,
+				75FB55A82769C07E395303B6 /* PickViewModel.swift in Sources */,
+				9982E80B6E674C19B3A129AE /* RegisterView.swift in Sources */,
+				22134985D130995648A17DEC /* RepositoryError.swift in Sources */,
+				A7C8551F48442846F8C9195F /* RootView.swift in Sources */,
+				7C3E72D73937D93360188D77 /* SlateView.swift in Sources */,
+				155A7509CA7975B51343185E /* SlateViewModel.swift in Sources */,
+				A401756FBAFC5EB76812AF18 /* Sport.swift in Sources */,
+				4AA0473B18AD630364DB75D8 /* Standing.swift in Sources */,
+				3B22547F8A065F2A626E2001 /* StandingDTO.swift in Sources */,
+				76F2EB8DCBB16E46AD780CB7 /* StandingsRepositoryProtocol.swift in Sources */,
+				0D205E667186041043D81B6D /* StandingsViewModel.swift in Sources */,
+				AA8F6C912FD1A65800AEE67D /* Theme.swift in Sources */,
+				537E89EAFCED3908D1593DDC /* TokenStore.swift in Sources */,
+				5B92150C6A1F46FEB9618904 /* Teams.swift in Sources */,
+				EF4E8AEFB183C93C9CF1F644 /* User.swift in Sources */,
+				3D21163D526F9175B5B00E54 /* UserDTO.swift in Sources */,
+				8F2153D53448A002550CE630 /* Week.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C9FE3B3F9729AE77FF0E51ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E83AAA29278AE6CFE19C7399 /* AuthViewModelTests.swift in Sources */,
+				320DD41DAE867874BD40E985 /* DTOMappingTests.swift in Sources */,
+				76622C9186285A2064E383D1 /* GameModelTests.swift in Sources */,
+				E2ECD8DBB7199BBCD64E7DC1 /* GroupViewModelTests.swift in Sources */,
+				EB58AAA91964186AD7853EDD /* MockPickRepositoryTests.swift in Sources */,
+				A918F19C4E30E0F7E89A9023 /* PickViewModelTests.swift in Sources */,
+				A21BFCA4C856333861CEDD31 /* SlateViewModelTests.swift in Sources */,
+				6C895703D680A4BD2DAC1C3F /* StandingModelTests.swift in Sources */,
+				F6B310FF01A72CA0918F7983 /* StandingsViewModelTests.swift in Sources */,
+				3174255EDC7DAEF5F8FF37BB /* GroupModelTests.swift in Sources */,
+				46463A713A0C97CDF3EAC569 /* PickResultTests.swift in Sources */,
+				141628A0D462AD4F1D818B54 /* NetworkServiceTests.swift in Sources */,
+				0EED86B42D1FE237C7EE48C9 /* LocalCacheServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DC9DDD406E3ABDB072BC2AD4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 55392D36CC129650B1537019 /* PickEm */;
+			targetProxy = EE06DAD91A6E1AACF4716859 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		134BE483BB8B894DDD5952E4 /* Debug-MockLocal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PickEm/PickEm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = PickEm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEm;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_LOCAL";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug-MockLocal";
+		};
+		135BF36A2FE7261035064117 /* Debug-MockBackend */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PickEm/PickEm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = PickEm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEm;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_BACKEND";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug-MockBackend";
+		};
+		3841EAB9ED36B24617B76A2A /* Debug-MockBackend */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = "Debug-MockBackend";
+		};
+		3AA04AEF352AC049416AB690 /* Debug-Live */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEmTests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_LOCAL";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PickEm.app/PickEm";
+			};
+			name = "Debug-Live";
+		};
+		49410F04EECB7B6176680BBB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		6D5E2BB3C0331252EF9C68C9 /* Debug-Live */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = "Debug-Live";
+		};
+		6E9A7D94A5E27AECB9D0ACE2 /* Debug-MockLocal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = "Debug-MockLocal";
+		};
+		7F6D1951C777C982BD6BB8F4 /* Debug-MockBackend */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEmTests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_LOCAL";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PickEm.app/PickEm";
+			};
+			name = "Debug-MockBackend";
+		};
+		A84525F3D46631A6E4A832F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PickEm/PickEm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = PickEm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEm;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CC2027E02EC91752D298231A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEmTests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_LOCAL";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PickEm.app/PickEm";
+			};
+			name = Release;
+		};
+		EC825F53CDFA7ED3EBEC15CD /* Debug-Live */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PickEm/PickEm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = PickEm/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEm;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug-Live";
+		};
+		FD860FF9376CCFF58020FD33 /* Debug-MockLocal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pickem.PickEmTests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MOCK_LOCAL";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PickEm.app/PickEm";
+			};
+			name = "Debug-MockLocal";
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2E19D2D52AE21FC2FD4221E3 /* Build configuration list for PBXNativeTarget "PickEm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EC825F53CDFA7ED3EBEC15CD /* Debug-Live */,
+				135BF36A2FE7261035064117 /* Debug-MockBackend */,
+				134BE483BB8B894DDD5952E4 /* Debug-MockLocal */,
+				A84525F3D46631A6E4A832F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Debug-Live";
+		};
+		4835D5459FC2D2A7A3195CC6 /* Build configuration list for PBXNativeTarget "PickEmTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3AA04AEF352AC049416AB690 /* Debug-Live */,
+				7F6D1951C777C982BD6BB8F4 /* Debug-MockBackend */,
+				FD860FF9376CCFF58020FD33 /* Debug-MockLocal */,
+				CC2027E02EC91752D298231A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Debug-Live";
+		};
+		4CB2319D005D2C338866D857 /* Build configuration list for PBXProject "PickEm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D5E2BB3C0331252EF9C68C9 /* Debug-Live */,
+				3841EAB9ED36B24617B76A2A /* Debug-MockBackend */,
+				6E9A7D94A5E27AECB9D0ACE2 /* Debug-MockLocal */,
+				49410F04EECB7B6176680BBB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Debug-Live";
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8A57C1C615FC2D94026D8D51 /* Project object */;
+}
