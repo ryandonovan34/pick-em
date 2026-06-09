@@ -5,9 +5,18 @@ In Phase 2 (APP_ENV=development) the Odds API is never called — all game data
 comes from the /dev/mock-games endpoint. This module handles Phase 3+.
 """
 
+import logging
+from datetime import datetime
+
 import httpx
+from sqlmodel import Session, select
 
 from app.config import settings
+from app.database import engine
+from app.models import Game
+from app.utils import utc_now
+
+logger = logging.getLogger(__name__)
 
 
 def round_spread(raw_spread: float) -> float:
@@ -50,3 +59,77 @@ async def fetch_odds(sport: str) -> list[dict]:
         response = await client.get(url, params=params, timeout=30.0)
         response.raise_for_status()
     return response.json()
+
+
+def ingest_odds(sport: str) -> int:
+    """
+    Fetch odds from The Odds API and upsert into the games table.
+    Games land in the odds pool (week_id=None) for admin slate building.
+    Already-slated games (week_id set) have their spread + kickoff updated in place.
+    Returns the count of games processed.
+    """
+    if not settings.ODDS_API_KEY:
+        logger.warning("ODDS_API_KEY not configured — skipping odds ingest for %s", sport)
+        return 0
+
+    url = f"{settings.ODDS_API_BASE_URL}/v4/sports/{sport}/odds"
+    params = {
+        "apiKey": settings.ODDS_API_KEY,
+        "markets": "spreads",
+        "oddsFormat": "american",
+        "dateFormat": "iso",
+    }
+    with httpx.Client() as client:
+        response = client.get(url, params=params, timeout=30.0)
+        response.raise_for_status()
+    raw_games: list[dict] = response.json()
+
+    now = utc_now()
+    count = 0
+    with Session(engine) as session:
+        for g in raw_games:
+            spread_val, favorite_team = _parse_spread(g)
+            if spread_val is None:
+                continue
+            spread = round_spread(spread_val)
+            kickoff_at = datetime.fromisoformat(g["commence_time"].replace("Z", "+00:00"))
+
+            existing = session.exec(
+                select(Game).where(Game.odds_api_id == g["id"])
+            ).first()
+            if existing:
+                existing.spread = spread
+                existing.favorite_team = favorite_team
+                existing.kickoff_at = kickoff_at
+                existing.odds_fetched_at = now
+                session.add(existing)
+            else:
+                session.add(Game(
+                    odds_api_id=g["id"],
+                    sport=sport,
+                    home_team=g["home_team"],
+                    away_team=g["away_team"],
+                    spread=spread,
+                    favorite_team=favorite_team,
+                    kickoff_at=kickoff_at,
+                    odds_fetched_at=now,
+                ))
+            count += 1
+        session.commit()
+
+    logger.info("Odds ingest: %d games upserted for %s", count, sport)
+    return count
+
+
+def _parse_spread(game_dict: dict) -> tuple[float | None, str | None]:
+    """Extract (spread_point, favorite_team) from an Odds API game dict."""
+    for bookmaker in game_dict.get("bookmakers", []):
+        for market in bookmaker.get("markets", []):
+            if market.get("key") != "spreads":
+                continue
+            outcomes = market.get("outcomes", [])
+            # The favorite has the negative point value.
+            favorite = next((o for o in outcomes if o.get("point", 0) < 0), None)
+            if favorite:
+                return favorite["point"], favorite["name"]
+    return None, None

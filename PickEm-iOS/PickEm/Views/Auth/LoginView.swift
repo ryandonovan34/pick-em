@@ -18,6 +18,9 @@ struct LoginView: View {
     }
     private var isValidPassword: Bool { password.count >= 8 }
     private var canSubmit: Bool { isValidEmail && isValidPassword && !viewModel.isLoading }
+    
+    @State private var shouldShowEmailError: Bool = false
+    @State private var shouldShowPasswordError: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -54,8 +57,18 @@ struct LoginView: View {
                         .onSubmit {
                             focusedField = .password
                         }
+                        .onChange(of: email) { _, newValue in
+                            if shouldShowEmailError {
+                                shouldShowEmailError = !email.isEmpty && !isValidEmail
+                            }
+                        }
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .email && newValue != .email {
+                                shouldShowEmailError = !email.isEmpty && !isValidEmail
+                            }
+                        }
 
-                        if !email.isEmpty && !isValidEmail {
+                        if shouldShowEmailError {
                             Text("Enter a valid email address.")
                                 .font(.peLabelSm())
                                 .foregroundStyle(AdaptiveColor.peError)
@@ -72,9 +85,20 @@ struct LoginView: View {
                         .focused($focusedField, equals: .password)
                         .onSubmit {
                             focusedField = nil
+                            Task { await viewModel.login(email: email, password: password) }
+                        }
+                        .onChange(of: password) { _, newValue in
+                            if shouldShowPasswordError {
+                                shouldShowPasswordError = !password.isEmpty && !isValidPassword
+                            }
+                        }
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .password && newValue != .password {
+                                shouldShowPasswordError = !password.isEmpty && !isValidPassword
+                            }
                         }
 
-                        if !password.isEmpty && !isValidPassword {
+                        if shouldShowPasswordError {
                             Text("Password must be at least 8 characters.")
                                 .font(.peLabelSm())
                                 .foregroundStyle(AdaptiveColor.peError)

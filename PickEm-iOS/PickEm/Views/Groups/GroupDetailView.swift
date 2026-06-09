@@ -27,12 +27,16 @@ struct GroupDetailView: View {
     }
 
     var body: some View {
-        TabView {
-            SlateView(slateViewModel: slateViewModel, pickViewModel: pickViewModel)
-                .tabItem { Label("Picks", systemImage: "checkmark.seal") }
+        VStack(spacing: 0) {
+            JoinCodeBanner(group: group)
 
-            StandingsView(viewModel: standingsViewModel, currentUserID: pickViewModel.currentUserID)
-                .tabItem { Label("Standings", systemImage: "trophy") }
+            TabView {
+                SlateView(slateViewModel: slateViewModel, pickViewModel: pickViewModel)
+                    .tabItem { Label("Picks", systemImage: "checkmark.seal") }
+
+                StandingsView(viewModel: standingsViewModel, currentUserID: pickViewModel.currentUserID)
+                    .tabItem { Label("Standings", systemImage: "trophy") }
+            }
         }
         .navigationTitle(group.name.uppercased())
         .navigationBarTitleDisplayMode(.inline)
@@ -55,6 +59,50 @@ struct GroupDetailView: View {
             await pickViewModel.loadPicks(weekID: week.id)
         }
         await standingsViewModel.loadStandings()
+    }
+}
+
+private struct JoinCodeBanner: View {
+    let group: Group
+    @State private var copied = false
+
+    var body: some View {
+        Button(action: copyCode) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("JOIN CODE")
+                        .font(.peLabelSm())
+                        .foregroundStyle(AdaptiveColor.peOnSurfaceVar)
+                        .tracking(1)
+                    Text(group.joinCode)
+                        .font(.system(size: 16, weight: .heavy, design: .monospaced).width(.condensed))
+                        .foregroundStyle(AdaptiveColor.pePrimary)
+                        .tracking(4)
+                }
+
+                Spacer()
+
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(copied ? AdaptiveColor.peSecondary : AdaptiveColor.pePrimary)
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(.spring(duration: 0.3), value: copied)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(AdaptiveColor.peSurface)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func copyCode() {
+        UIPasteboard.general.string = group.joinCode
+        guard !copied else { return }
+        copied = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            copied = false
+        }
     }
 }
 

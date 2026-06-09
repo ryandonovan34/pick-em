@@ -12,15 +12,18 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from app.utils import ensure_utc, utc_now
 from sqlmodel import Session, select
 
 from app.auth.dependencies import get_current_user
+from app.config import settings
 from app.database import get_session
 from app.models import Game, Group, GroupMember, User, Week
 from app.routers.groups import _require_admin, _require_member
 from app.schemas.game import AddGameToSlate, GameRead, WeekCreate, WeekRead
+from app.services.odds import ingest_odds
+from app.services.scheduler import cancel_odds_refresh_for_slate, schedule_odds_refresh_for_slate
 
 router = APIRouter()
 
@@ -140,6 +143,11 @@ def add_game_to_slate(
     session.add(game)
     session.commit()
     session.refresh(game)
+
+    all_slate_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
+    first_kickoff = min(ensure_utc(g.kickoff_at) for g in all_slate_games)
+    schedule_odds_refresh_for_slate(week_id, game.sport, first_kickoff)
+
     return game
 
 
@@ -175,9 +183,17 @@ def remove_game_from_slate(
         )
 
     # Return to pool rather than deleting — the game data is still valid.
+    sport = game.sport
     game.week_id = None
     session.add(game)
     session.commit()
+
+    remaining = session.exec(select(Game).where(Game.week_id == week_id)).all()
+    if remaining:
+        first_kickoff = min(ensure_utc(g.kickoff_at) for g in remaining)
+        schedule_odds_refresh_for_slate(week_id, sport, first_kickoff)
+    else:
+        cancel_odds_refresh_for_slate(week_id)
 
 
 # ── Available odds ────────────────────────────────────────────────────────────
@@ -185,6 +201,7 @@ def remove_game_from_slate(
 @router.get("/odds/available", response_model=list[GameRead])
 def get_available_odds(
     sport: str = Query(..., description="Odds API sport key, e.g. 'americanfootball_nfl'"),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[Game]:
@@ -192,9 +209,24 @@ def get_available_odds(
     Return games in the odds pool (week_id=None) for a given sport.
     Admins use this to build a slate.
 
+    If the cached data is older than ODDS_CACHE_TTL_MINUTES, a background
+    re-fetch is triggered — stale data is returned immediately.
     In Phase 2 (development), the pool is seeded via POST /dev/mock-games.
     In Phase 3+, the pool is populated by the Odds API scheduler.
     """
+    if settings.ODDS_API_KEY:
+        newest = session.exec(
+            select(Game)
+            .where(Game.sport == sport)
+            .order_by(Game.odds_fetched_at.desc())  # type: ignore[union-attr]
+        ).first()
+        age_minutes = (
+            (utc_now() - ensure_utc(newest.odds_fetched_at)).total_seconds() / 60
+            if newest is not None else float("inf")
+        )
+        if age_minutes > settings.ODDS_CACHE_TTL_MINUTES:
+            background_tasks.add_task(ingest_odds, sport)
+
     return list(
         session.exec(
             select(Game).where(

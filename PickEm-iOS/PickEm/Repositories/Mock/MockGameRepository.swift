@@ -1,7 +1,7 @@
 import Foundation
 
 final class MockGameRepository: GameRepositoryProtocol {
-    private var weeks: [Week] = [MockData.nflWeek, MockData.worldCupWeek]
+    private var weeks: [Week] = [MockData.nflWeek11, MockData.nflWeek, MockData.worldCupWeek]
     private var games: [Game] = MockData.games
 
     func fetchWeeks(groupID: String) async throws -> [Week] {

@@ -204,6 +204,21 @@ Triggered by `POST /dev/mock-results` in development, or by the Odds API results
 
 ---
 
+## Mock Backend Test Accounts
+
+Run `pickem-api/scripts/seed_dev.sh` to wipe and reseed the development database with a consistent dataset. All accounts use password `password123`.
+
+| Email | Name | Role |
+|-------|------|------|
+| `alice@test.com` | Alice | Admin of both groups |
+| `bob@test.com` | Bob | Member |
+| `charlie@test.com` | Charlie | Member |
+| `diana@test.com` | Diana | Member |
+
+Two groups are created — **Sunday Crew** (NFL, superdogs on) and **World Cup 2026** — each with a completed past week and a current week containing final, live, and upcoming games. See [`pickem-api/README.md`](pickem-api/README.md#seeding-mock-data-phase-2) for full details including expected standings.
+
+---
+
 ## Build Phases
 
 | Phase | Status | Description |
