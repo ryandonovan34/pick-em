@@ -107,65 +107,79 @@ In development mode, the server automatically creates all database tables on sta
 
 The `/dev/*` endpoints let you drive the full app without the Odds API.
 
-### Seed available games into the pool
+### Full dev seed script
+
+`scripts/seed_dev.sh` wipes the database and builds a complete realistic dataset in one shot. Run it any time you want a clean, known state.
 
 ```bash
-# Seed 4 NFL games (kickoff 48h from now by default)
+# From the pickem-api directory, with the server running:
+./scripts/seed_dev.sh
+
+# Override defaults if needed:
+DATABASE_URL=postgresql://localhost/pickem API_BASE_URL=http://localhost:8000 ./scripts/seed_dev.sh
+```
+
+**What it creates:**
+
+| | NFL — Sunday Crew | World Cup 2026 |
+|---|---|---|
+| **Members** | Alice (admin), Bob, Charlie, Diana | same 4 |
+| **Settings** | blind_picks off, superdogs on (3/user) | blind_picks on, superdogs off |
+| **Past week** | Week 11 — 4 games, all final | Matchday 1 — 4 games, all final |
+| **Current week** | Week 12 | Matchday 2 |
+| ↳ Final | Ravens 27-10 Browns | Germany 2-0 Japan |
+| ↳ Live | Bengals vs Steelers (kicked off) | Spain vs Costa Rica (kicked off) |
+| ↳ Upcoming | Lions vs Bears · Packers vs Vikings | Portugal vs Ghana · England vs Iran |
+
+**Test accounts** (password: `password123`):
+
+| Email | Display name |
+|-------|-------------|
+| `alice@test.com` | Alice (admin) |
+| `bob@test.com` | Bob |
+| `charlie@test.com` | Charlie |
+| `diana@test.com` | Diana |
+
+**Expected standings after seed:**
+
+NFL Sunday Crew:
+```
+1. Alice    3W-1L  1SD   85.7%
+2. Charlie  4W-1L        80.0%
+3. Diana    3W-2L        60.0%
+4. Bob      2W-3L        40.0%
+```
+
+World Cup 2026:
+```
+1. Alice    4W-1L        80.0%
+2. Diana    4W-1L        80.0%
+3. Bob      3W-2L        60.0%
+4. Charlie  2W-3L        40.0%
+```
+
+> The script requires `psql` to be on your PATH (used to set "live" game kickoff times and to wipe the DB). It uses `DATABASE_URL` with the same default as the server.
+
+### Individual dev endpoints
+
+```bash
+# Seed games into the odds pool (kickoff 48h from now)
 curl -X POST http://localhost:8000/dev/mock-games \
   -H "Content-Type: application/json" \
   -d '{"sport": "americanfootball_nfl", "week_label": "Week 12", "game_count": 4}'
 
-# Seed 4 World Cup games
-curl -X POST http://localhost:8000/dev/mock-games \
+# Create a week and populate it in one shot
+curl -X POST http://localhost:8000/dev/seed-week \
   -H "Content-Type: application/json" \
-  -d '{"sport": "soccer_fifa_world_cup", "week_label": "Group Stage - Matchday 1", "game_count": 4}'
-```
+  -d '{"group_id": "GROUP_ID", "sport": "americanfootball_nfl", "week_label": "Week 12", "game_count": 4}'
 
-### Post a result (triggers full result pipeline)
-
-```bash
-# Replace GAME_ID with a real UUID from the response above
+# Post a result (triggers full scoring + standings pipeline)
 curl -X POST http://localhost:8000/dev/mock-results \
   -H "Content-Type: application/json" \
   -d '{"game_id": "GAME_ID", "home_score": 27, "away_score": 14}'
-```
 
-### View available templates
-
-```bash
+# View available team templates
 curl http://localhost:8000/dev/mock-templates
-```
-
-### Typical full flow
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@test.com","display_name":"Admin","password":"password123"}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-# Create a group
-GROUP=$(curl -s -X POST http://localhost:8000/groups \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Sunday Crew","sport":"americanfootball_nfl","mode":"season","season_year":2025,"blind_picks":false,"superdogs_enabled":true,"superdogs_per_user":3}')
-GROUP_ID=$(echo $GROUP | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-
-# Create a week
-WEEK=$(curl -s -X POST http://localhost:8000/groups/$GROUP_ID/weeks \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"label":"Week 12"}')
-WEEK_ID=$(echo $WEEK | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-
-# Seed games and add one to the slate
-GAMES=$(curl -s -X POST http://localhost:8000/dev/mock-games \
-  -H "Content-Type: application/json" \
-  -d '{"sport":"americanfootball_nfl","week_label":"Week 12","game_count":4}')
-ODDS_ID=$(echo $GAMES | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['odds_api_id'])")
-
-curl -s -X POST http://localhost:8000/groups/$GROUP_ID/weeks/$WEEK_ID/games \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d "{\"odds_api_id\":\"$ODDS_ID\"}"
 ```
 
 ---
