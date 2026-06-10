@@ -20,8 +20,9 @@ from sqlmodel import Session, select
 
 from app.config import settings
 from app.database import get_session
-from app.models import Game, Week
+from app.models import Game, Group, GroupMember, User, Week
 from app.schemas.game import GameRead, WeekRead
+from app.services import notifications
 from app.services.odds import round_spread
 from app.services.results import process_game_result
 
@@ -266,6 +267,30 @@ def post_mock_result(
     GET /groups/{id}/weeks/{week_id}/games.
     """
     try:
-        return process_game_result(body.game_id, body.home_score, body.away_score, session)
+        game = process_game_result(body.game_id, body.home_score, body.away_score, session)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    # Send notifications (no-op when FCM is not configured).
+    try:
+        week = session.get(Week, game.week_id)
+        if week:
+            group = session.get(Group, week.group_id)
+            if group:
+                members = session.exec(
+                    select(User)
+                    .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+                    .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
+                ).all()
+                tokens = [m.fcm_token for m in members if m.fcm_token]
+                if tokens:
+                    notifications.send_silent_cache_invalidation(
+                        tokens, "results_posted", group_id=group.id, week_id=game.week_id
+                    )
+                    slate_games = session.exec(select(Game).where(Game.week_id == game.week_id)).all()
+                    if all(g.result_posted for g in slate_games):
+                        notifications.send_results_notification(tokens, group.name)
+    except Exception:
+        pass  # Never let notification failure break the mock-results response
+
+    return game

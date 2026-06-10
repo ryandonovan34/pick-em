@@ -52,13 +52,9 @@ echo "==> Checking secrets..."
 prompt_secret "SECRET_KEY"   "generate one with: openssl rand -hex 32"
 prompt_secret "ODDS_API_KEY" "from the-odds-api.com — leave blank to skip live odds"
 
-# ── Deploy ────────────────────────────────────────────────────────────────────
+# ── Deploy (migrations run automatically via release_command in fly.toml) ─────
 echo "==> Building and deploying..."
 fly deploy --app "$APP_NAME"
-
-# ── Migrations ────────────────────────────────────────────────────────────────
-echo "==> Running database migrations..."
-fly ssh console --app "$APP_NAME" -C "alembic upgrade head"
 
 echo ""
 echo "  App:      https://${APP_NAME}.fly.dev"

@@ -23,7 +23,14 @@ from app.models import Game, Group, GroupMember, User, Week
 from app.routers.groups import _require_admin, _require_member
 from app.schemas.game import AddGameToSlate, GameRead, WeekCreate, WeekRead
 from app.services.odds import ingest_odds
-from app.services.scheduler import cancel_odds_refresh_for_slate, schedule_odds_refresh_for_slate
+from app.services.scheduler import (
+    cancel_odds_refresh_for_slate,
+    cancel_pick_reminders,
+    cancel_slate_admin_reminder,
+    schedule_odds_refresh_for_slate,
+    schedule_pick_reminders,
+    schedule_slate_admin_reminder,
+)
 
 router = APIRouter()
 
@@ -146,6 +153,10 @@ def add_game_to_slate(
 
     all_slate_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
     first_kickoff = min(ensure_utc(g.kickoff_at) for g in all_slate_games)
+    team_names = f"{game.away_team} at {game.home_team}"
+
+    schedule_pick_reminders(game.id, group_id, ensure_utc(game.kickoff_at), team_names)
+    schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
     schedule_odds_refresh_for_slate(week_id, game.sport, first_kickoff)
 
     return game
@@ -184,15 +195,20 @@ def remove_game_from_slate(
 
     # Return to pool rather than deleting — the game data is still valid.
     sport = game.sport
+    removed_game_id = game.id
     game.week_id = None
     session.add(game)
     session.commit()
 
+    cancel_pick_reminders(removed_game_id)
+
     remaining = session.exec(select(Game).where(Game.week_id == week_id)).all()
     if remaining:
         first_kickoff = min(ensure_utc(g.kickoff_at) for g in remaining)
+        schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
         schedule_odds_refresh_for_slate(week_id, sport, first_kickoff)
     else:
+        cancel_slate_admin_reminder(week_id)
         cancel_odds_refresh_for_slate(week_id)
 
 

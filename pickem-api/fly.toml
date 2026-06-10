@@ -1,6 +1,9 @@
 app = "pickem-api"
 primary_region = "iad"
 
+[deploy]
+  release_command = "alembic upgrade head"
+
 [build]
 
 [env]

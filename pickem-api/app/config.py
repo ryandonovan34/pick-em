@@ -1,4 +1,5 @@
 from typing import Literal
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,14 @@ class Settings(BaseSettings):
     APP_ENV: Literal["development", "production"] = "development"
 
     DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/pickem"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        # Fly.io injects DATABASE_URL as postgres:// but SQLAlchemy 2 requires postgresql+psycopg2://
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+psycopg2://", 1)
+        return v
 
     SECRET_KEY: str = "change-me-before-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

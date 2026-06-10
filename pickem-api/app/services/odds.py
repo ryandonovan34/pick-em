@@ -121,6 +121,22 @@ def ingest_odds(sport: str) -> int:
     return count
 
 
+def fetch_scores(sport: str) -> list[dict]:
+    """
+    Fetch recent completed game scores from The Odds API.
+    Returns raw game dicts including 'completed' flag and 'scores' list.
+    Returns an empty list if ODDS_API_KEY is not configured.
+    """
+    if not settings.ODDS_API_KEY:
+        return []
+    url = f"{settings.ODDS_API_BASE_URL}/v4/sports/{sport}/scores"
+    params = {"apiKey": settings.ODDS_API_KEY, "daysFrom": "3"}
+    with httpx.Client() as client:
+        response = client.get(url, params=params, timeout=30.0)
+        response.raise_for_status()
+    return response.json()
+
+
 def _parse_spread(game_dict: dict) -> tuple[float | None, str | None]:
     """Extract (spread_point, favorite_team) from an Odds API game dict."""
     for bookmaker in game_dict.get("bookmakers", []):

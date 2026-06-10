@@ -1,11 +1,11 @@
 """
 APScheduler job management.
 
-Phase 3: odds refresh runs every 6 hours (+ once on startup) if ODDS_API_KEY is set.
-Phase 4: wire up FCM token lookup for real notification delivery.
+Jobs that need FCM tokens look them up from the database at fire time,
+not at schedule time — tokens change when users reinstall the app.
 
-APScheduler stores jobs in memory by default. For production consider
-switching to the SQLAlchemy job store so jobs survive server restarts.
+APScheduler stores jobs in memory. For production, consider switching to
+the SQLAlchemy job store so jobs survive server restarts.
 """
 
 import logging
@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 _SUPPORTED_SPORTS = ["americanfootball_nfl", "soccer_fifa_world_cup"]
 
-# The single shared scheduler instance.
 scheduler = BackgroundScheduler(timezone="UTC")
 
 
@@ -29,6 +28,7 @@ def start() -> None:
         scheduler.start()
         logger.info("Scheduler started.")
         _schedule_odds_refresh()
+        _schedule_results_fetch()
 
 
 def shutdown() -> None:
@@ -37,40 +37,57 @@ def shutdown() -> None:
         logger.info("Scheduler shut down.")
 
 
-# ── Job factories ────────────────────────────────────────────────────────────
+# ── Public job factories ──────────────────────────────────────────────────────
 
 def schedule_pick_reminders(
     game_id: uuid.UUID,
     group_id: uuid.UUID,
     kickoff_at: datetime,
-    member_fcm_tokens: list[str],
     team_names: str,
 ) -> None:
     """
-    Schedule pick-reminder notifications at T-120, T-60, T-30, and T-15 minutes
-    before a game kicks off. Each job only fires if the user hasn't picked yet
-    (that check happens inside the job itself — Phase 4).
+    Schedule pick-reminder notifications at T-120, T-60, T-30, and T-15 minutes.
+    FCM tokens and already-picked status are resolved at fire time.
     """
-    intervals = [120, 60, 30, 15]
-    for minutes in intervals:
-        fire_at = kickoff_at - timedelta(minutes=minutes)
-        job_id = f"pick_reminder_{game_id}_{minutes}m"
+    for minutes in [120, 60, 30, 15]:
         scheduler.add_job(
             _send_pick_reminders,
             "date",
-            run_date=fire_at,
-            id=job_id,
+            run_date=kickoff_at - timedelta(minutes=minutes),
+            id=f"pick_reminder_{game_id}_{minutes}m",
             replace_existing=True,
-            args=[member_fcm_tokens, team_names, minutes],
+            kwargs={"game_id": game_id, "group_id": group_id, "team_names": team_names, "minutes": minutes},
         )
 
 
 def cancel_pick_reminders(game_id: uuid.UUID) -> None:
-    """Cancel all scheduled pick reminders for a game (e.g. when it's removed from a slate)."""
+    """Cancel all scheduled pick reminders for a game (e.g. when removed from a slate)."""
     for minutes in [120, 60, 30, 15]:
         job_id = f"pick_reminder_{game_id}_{minutes}m"
         if scheduler.get_job(job_id):
             scheduler.remove_job(job_id)
+
+
+def schedule_slate_admin_reminder(
+    week_id: uuid.UUID,
+    group_id: uuid.UUID,
+    first_kickoff_at: datetime,
+) -> None:
+    """Remind the admin to finalise the slate 3 hours before first kickoff."""
+    scheduler.add_job(
+        _send_slate_admin_reminder,
+        "date",
+        run_date=first_kickoff_at - timedelta(hours=3),
+        id=f"slate_reminder_{week_id}",
+        replace_existing=True,
+        kwargs={"group_id": group_id},
+    )
+
+
+def cancel_slate_admin_reminder(week_id: uuid.UUID) -> None:
+    job_id = f"slate_reminder_{week_id}"
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
 
 
 def schedule_odds_refresh_for_slate(
@@ -80,18 +97,13 @@ def schedule_odds_refresh_for_slate(
 ) -> None:
     """
     Schedule a one-time odds refresh 3 hours before the first kickoff of a slate.
-    Called whenever games are added or removed so the fire time stays current.
-    If T-3hr has already passed (kickoff is imminent), fires immediately.
+    Replaces any existing job for this week so fire time stays current as games change.
     No-op if ODDS_API_KEY is not configured.
     """
     from app.config import settings
     if not settings.ODDS_API_KEY:
         return
-    fire_at = first_kickoff_at - timedelta(hours=3)
-    # Don't schedule in the past — fire immediately instead.
-    now = datetime.now(timezone.utc)
-    if fire_at < now:
-        fire_at = now
+    fire_at = max(first_kickoff_at - timedelta(hours=3), datetime.now(timezone.utc))
     scheduler.add_job(
         _refresh_sport_job,
         "date",
@@ -104,40 +116,19 @@ def schedule_odds_refresh_for_slate(
 
 
 def cancel_odds_refresh_for_slate(week_id: uuid.UUID) -> None:
-    """Cancel the T-3hr odds refresh for a slate (e.g. all games removed)."""
     job_id = f"odds_refresh_slate_{week_id}"
     if scheduler.get_job(job_id):
         scheduler.remove_job(job_id)
 
 
-def schedule_slate_admin_reminder(
-    week_id: uuid.UUID,
-    first_kickoff_at: datetime,
-    admin_fcm_token: str,
-    group_name: str,
-) -> None:
-    """Remind the admin to finalise the slate 3 hours before first kickoff."""
-    fire_at = first_kickoff_at - timedelta(hours=3)
-    scheduler.add_job(
-        notifications.send_slate_reminder_to_admin,
-        "date",
-        run_date=fire_at,
-        id=f"slate_reminder_{week_id}",
-        replace_existing=True,
-        args=[admin_fcm_token, group_name],
-    )
-
-
-# ── Internal job functions ───────────────────────────────────────────────────
+# ── Internal setup ────────────────────────────────────────────────────────────
 
 def _schedule_odds_refresh() -> None:
     from app.config import settings
     if not settings.ODDS_API_KEY:
         logger.info("ODDS_API_KEY not set — odds refresh job not scheduled.")
         return
-    # Fire once immediately on startup to populate the pool.
     scheduler.add_job(_refresh_odds_job, "date", id="odds_refresh_startup", replace_existing=True)
-    # Then every 24 hours for line movement updates.
     scheduler.add_job(
         _refresh_odds_job,
         "interval",
@@ -145,8 +136,24 @@ def _schedule_odds_refresh() -> None:
         id="odds_refresh_interval",
         replace_existing=True,
     )
-    logger.info("Odds refresh job scheduled (startup + every 24h).")
+    logger.info("Odds refresh scheduled (startup + every 24h).")
 
+
+def _schedule_results_fetch() -> None:
+    from app.config import settings
+    if not settings.ODDS_API_KEY:
+        return
+    scheduler.add_job(
+        _fetch_and_process_results,
+        "interval",
+        minutes=15,
+        id="results_fetch",
+        replace_existing=True,
+    )
+    logger.info("Results fetch scheduled (every 15 min).")
+
+
+# ── Internal job functions ────────────────────────────────────────────────────
 
 def _refresh_odds_job() -> None:
     from app.services.odds import ingest_odds
@@ -165,6 +172,131 @@ def _refresh_sport_job(sport: str) -> None:
         logger.exception("Odds refresh failed for sport=%s", sport)
 
 
-def _send_pick_reminders(fcm_tokens: list[str], team_names: str, minutes: int) -> None:
-    for token in fcm_tokens:
-        notifications.send_pick_reminder(token, team_names, minutes)
+def _send_pick_reminders(
+    game_id: uuid.UUID,
+    group_id: uuid.UUID,
+    team_names: str,
+    minutes: int,
+) -> None:
+    """Look up group members who haven't picked yet and send them a reminder."""
+    from app.database import engine
+    from app.models import GroupMember, Pick, User
+    from sqlmodel import Session, select
+
+    with Session(engine) as session:
+        members = session.exec(
+            select(User)
+            .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+            .where(GroupMember.group_id == group_id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
+        ).all()
+
+        for member in members:
+            already_picked = session.exec(
+                select(Pick).where(
+                    Pick.user_id == member.id,
+                    Pick.game_id == game_id,
+                    Pick.group_id == group_id,
+                )
+            ).first()
+            if already_picked is None and member.fcm_token:
+                notifications.send_pick_reminder(member.fcm_token, team_names, minutes)
+
+
+def _send_slate_admin_reminder(group_id: uuid.UUID) -> None:
+    from app.database import engine
+    from app.models import Group, User
+    from sqlmodel import Session
+
+    with Session(engine) as session:
+        group = session.get(Group, group_id)
+        if group is None:
+            return
+        admin = session.get(User, group.admin_id)
+        if admin and admin.fcm_token:
+            notifications.send_slate_reminder_to_admin(admin.fcm_token, group.name)
+
+
+def _fetch_and_process_results() -> None:
+    """
+    Poll the Odds API scores endpoint for completed games, process results,
+    and send FCM notifications to affected groups.
+    """
+    from app.database import engine
+    from app.models import Game, Group, GroupMember, User, Week
+    from app.services.odds import fetch_scores
+    from app.services.results import process_game_result
+    from app.utils import utc_now
+    from sqlmodel import Session, select
+
+    now = utc_now()
+
+    with Session(engine) as session:
+        pending = session.exec(
+            select(Game).where(
+                Game.result_posted == False,  # noqa: E712
+                Game.week_id.isnot(None),  # type: ignore[union-attr]
+                Game.kickoff_at <= now,
+            )
+        ).all()
+
+        if not pending:
+            return
+
+        # Fetch scores for each sport that has pending games.
+        score_map: dict[str, tuple[int, int]] = {}
+        for sport in {g.sport for g in pending}:
+            try:
+                for s in fetch_scores(sport):
+                    if not s.get("completed") or not s.get("scores"):
+                        continue
+                    home = next((x for x in s["scores"] if x["name"] == s["home_team"]), None)
+                    away = next((x for x in s["scores"] if x["name"] == s["away_team"]), None)
+                    if home and away:
+                        score_map[s["id"]] = (int(home["score"]), int(away["score"]))
+            except Exception:
+                logger.exception("Failed to fetch scores for sport=%s", sport)
+
+        for game in pending:
+            if not game.odds_api_id or game.odds_api_id not in score_map:
+                continue
+            home_score, away_score = score_map[game.odds_api_id]
+            week_id = game.week_id
+            try:
+                process_game_result(game.id, home_score, away_score, session)
+            except ValueError:
+                continue
+            except Exception:
+                logger.exception("Failed to process result for game %s", game.id)
+                continue
+
+            # Notify the group after each game result is committed.
+            try:
+                week = session.get(Week, week_id)
+                if week is None:
+                    continue
+                group = session.get(Group, week.group_id)
+                if group is None:
+                    continue
+
+                members_with_tokens = session.exec(
+                    select(User)
+                    .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+                    .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
+                ).all()
+                tokens = [m.fcm_token for m in members_with_tokens if m.fcm_token]
+
+                if not tokens:
+                    continue
+
+                # Silent push on every game result so iOS re-fetches immediately.
+                notifications.send_silent_cache_invalidation(
+                    tokens, "results_posted", group_id=group.id, week_id=week_id
+                )
+
+                # Alerting notification only when the full slate is done.
+                slate_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
+                if all(g.result_posted for g in slate_games):
+                    notifications.send_results_notification(tokens, group.name)
+
+            except Exception:
+                logger.exception("Failed to send result notifications for game %s", game.id)
