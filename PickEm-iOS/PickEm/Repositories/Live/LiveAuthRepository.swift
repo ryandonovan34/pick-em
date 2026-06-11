@@ -19,8 +19,9 @@ final class LiveAuthRepository: AuthRepositoryProtocol {
         return (user: response.user.toDomain(), accessToken: response.accessToken, refreshToken: response.refreshToken)
     }
 
-    func logout() async throws {
-        let _: EmptyResponseBody = try await network.post("/auth/logout", body: EmptyBody())
+    func logout(refreshToken: String) async throws {
+        struct LogoutBody: Encodable { let refresh_token: String }
+        let _: EmptyResponseBody = try await network.post("/auth/logout", body: LogoutBody(refresh_token: refreshToken))
     }
 
     func refreshAccessToken(refreshToken: String) async throws -> String {
@@ -33,6 +34,11 @@ final class LiveAuthRepository: AuthRepositoryProtocol {
     func updateFCMToken(_ token: String) async throws {
         struct FCMBody: Encodable { let fcm_token: String }
         try await network.put("/auth/fcm-token", body: FCMBody(fcm_token: token))
+    }
+
+    func fetchCurrentUser() async throws -> User {
+        let dto: UserDTO = try await network.get("/auth/me")
+        return dto.toDomain()
     }
 }
 

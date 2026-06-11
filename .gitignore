@@ -13,3 +13,7 @@
 
 # MCP config (personal/sensitive)
 .mcp.json
+
+# Firebase
+service-account.json
+GoogleService-Info.plist

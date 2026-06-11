@@ -15,22 +15,30 @@ final class LiveGameRepository: GameRepositoryProtocol {
     }
 
     func fetchGames(groupID: String, weekID: String) async throws -> [Game] {
+        let cacheKey = "games:\(weekID)"
         if let cached = await MainActor.run(body: { cache.loadGames(groupID: groupID, weekID: weekID) }) {
+            NetworkLogger.logCache(hit: true, for: cacheKey)
             return cached
         }
+        NetworkLogger.logCache(hit: false, for: cacheKey)
         let dtos: [GameDTO] = try await network.get("/groups/\(groupID)/weeks/\(weekID)/games")
         let games = dtos.map { $0.toDomain() }
         await MainActor.run { cache.saveGames(games, groupID: groupID, weekID: weekID) }
         return games
     }
 
-    func fetchAvailableOdds(sport: Sport, dateRange: ClosedRange<Date>?) async throws -> [Game] {
+    func fetchAvailableOdds(sport: Sport, groupID: String?) async throws -> [Game] {
         var path = "/odds/available?sport=\(sport.rawValue)"
-        let fmt = ISO8601DateFormatter()
-        if let range = dateRange {
-            path += "&date_from=\(fmt.string(from: range.lowerBound))&date_to=\(fmt.string(from: range.upperBound))"
+        if let groupID {
+            path += "&group_id=\(groupID)"
         }
         let dtos: [GameDTO] = try await network.get(path)
+        return dtos.map { $0.toDomain() }
+    }
+
+    func populateSlate(groupID: String) async throws -> [Week] {
+        struct Empty: Encodable {}
+        let dtos: [WeekDTO] = try await network.post("/groups/\(groupID)/populate", body: Empty())
         return dtos.map { $0.toDomain() }
     }
 

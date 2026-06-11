@@ -24,9 +24,7 @@ private struct AuthGate: View {
     @ViewBuilder
     private var mainContent: some View {
         NavigationStack {
-            GroupListView(
-                viewModel: GroupViewModel(groupRepository: dependencies.groupRepository)
-            )
+            GroupListView(viewModel: dependencies.groupViewModel)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Sign Out") {
@@ -35,6 +33,7 @@ private struct AuthGate: View {
                 }
             }
         }
+        .task { await authViewModel.fetchCurrentUser() }
     }
 }
 

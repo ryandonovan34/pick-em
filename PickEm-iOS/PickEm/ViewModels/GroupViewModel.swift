@@ -15,6 +15,7 @@ final class GroupViewModel {
 
     func loadGroups() async {
         isLoading = true
+        groups = []
         errorMessage = nil
         defer { isLoading = false }
         do {

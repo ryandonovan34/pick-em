@@ -10,11 +10,15 @@ final class MockAuthRepository: AuthRepositoryProtocol {
         return (user: user, accessToken: "mock-access-token", refreshToken: "mock-refresh-token")
     }
 
-    func logout() async throws {}
+    func logout(refreshToken: String) async throws {}
 
     func refreshAccessToken(refreshToken: String) async throws -> String {
         "mock-access-token-refreshed"
     }
 
     func updateFCMToken(_ token: String) async throws {}
+
+    func fetchCurrentUser() async throws -> User {
+        MockData.currentUser
+    }
 }

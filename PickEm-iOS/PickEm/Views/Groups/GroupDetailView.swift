@@ -5,14 +5,16 @@ struct GroupDetailView: View {
     @State private var slateViewModel: SlateViewModel
     @State private var pickViewModel: PickViewModel
     @State private var standingsViewModel: StandingsViewModel
+    @Environment(AppDependencies.self) private var dependencies
 
     init(group: Group, dependencies: AppDependencies) {
         self.group = group
-        let currentUserID = dependencies.authViewModel.currentUser?.id ?? MockData.currentUserID
+        let currentUserID = dependencies.authViewModel.currentUser?.id ?? ""
         _slateViewModel = State(wrappedValue: SlateViewModel(
             group: group,
             gameRepository: dependencies.gameRepository,
-            cacheService: dependencies.cacheService
+            cacheService: dependencies.cacheService,
+            currentUserID: currentUserID
         ))
         _pickViewModel = State(wrappedValue: PickViewModel(
             group: group,
@@ -51,6 +53,12 @@ struct GroupDetailView: View {
             }
         }
         .onLoad { await initialLoad() }
+        .onChange(of: dependencies.authViewModel.currentUser) { _, user in
+            if let id = user?.id {
+                slateViewModel.currentUserID = id
+                pickViewModel.currentUserID = id
+            }
+        }
     }
 
     private func initialLoad() async {

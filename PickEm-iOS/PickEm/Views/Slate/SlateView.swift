@@ -5,17 +5,30 @@ struct SlateView: View {
     var slateViewModel: SlateViewModel
     var pickViewModel: PickViewModel
     @State private var pickTarget: Game?
+    @State private var showManage = false
 
     var body: some View {
-        ViewGroup {
-            if slateViewModel.isLoading && slateViewModel.games.isEmpty {
-                LoadingView(message: "Loading games...")
-            } else if let error = slateViewModel.errorMessage, slateViewModel.games.isEmpty {
-                ErrorView(message: error) {
-                    Task { await slateViewModel.refresh() }
+        VStack(spacing: 0) {
+            if slateViewModel.isAdmin {
+                manageSlateBar
+            }
+
+            ViewGroup {
+                if slateViewModel.isLoading && slateViewModel.weeks.isEmpty {
+                    LoadingView(message: "Loading games...")
+                } else if let error = slateViewModel.errorMessage {
+                    ErrorView(message: error) {
+                        Task { await slateViewModel.loadWeeks() }
+                    }
+                } else if slateViewModel.weeks.isEmpty {
+                    ContentUnavailableView(
+                        "No Weeks Yet",
+                        systemImage: "calendar.badge.exclamationmark",
+                        description: Text("Use Manage Slate above to set up this week's games.")
+                    )
+                } else {
+                    gameList
                 }
-            } else {
-                gameList
             }
         }
         .navigationTitle(slateViewModel.selectedWeek?.label ?? "Slate")
@@ -41,6 +54,31 @@ struct SlateView: View {
                 pickViewModel: pickViewModel
             )
         }
+        .sheet(isPresented: $showManage) {
+            SlateManageView(viewModel: slateViewModel)
+        }
+    }
+
+    private var manageSlateBar: some View {
+        Button {
+            showManage = true
+        } label: {
+            HStack {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Manage Slate")
+                    .font(.peLabelBold())
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AdaptiveColor.peOnSurfaceVar)
+            }
+            .foregroundStyle(AdaptiveColor.pePrimary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(AdaptiveColor.peSurface)
+        }
+        .buttonStyle(.plain)
     }
 
     private var gameList: some View {

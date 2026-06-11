@@ -16,7 +16,9 @@ final class AppDependencies {
     let standingsRepository: any StandingsRepositoryProtocol
     let tokenStore: TokenStore
     let authViewModel: AuthViewModel
+    let groupViewModel: GroupViewModel
     let cacheService: LocalCacheService
+    let notificationService: NotificationService
 
     init() {
         let store = TokenStore()
@@ -45,7 +47,7 @@ final class AppDependencies {
         let standings = LiveStandingsRepository(network: network, cache: cache)
 
         #else
-        let apiURL = URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://api.pickem.app")!
+        let apiURL = URL(string: ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://pickem-api.fly.dev")!
         let network = NetworkService(baseURL: apiURL, tokenStore: store)
         let auth = LiveAuthRepository(network: network)
         let group = LiveGroupRepository(network: network)
@@ -60,5 +62,7 @@ final class AppDependencies {
         pickRepository = pick
         standingsRepository = standings
         authViewModel = AuthViewModel(authRepository: auth, tokenStore: store)
+        groupViewModel = GroupViewModel(groupRepository: group)
+        notificationService = NotificationService(authRepository: auth, cacheService: cache)
     }
 }

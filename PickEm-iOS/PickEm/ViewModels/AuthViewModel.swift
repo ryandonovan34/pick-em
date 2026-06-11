@@ -7,7 +7,7 @@ final class AuthViewModel {
     var isLoading = false
     var loginErrorMessage: String?
     var registerErrorMessage: String?
-    var isAuthenticated = false
+    var isAuthenticated: Bool { tokenStore.accessToken != nil }
 
     private let authRepository: any AuthRepositoryProtocol
     private let tokenStore: TokenStore
@@ -15,7 +15,6 @@ final class AuthViewModel {
     init(authRepository: any AuthRepositoryProtocol, tokenStore: TokenStore) {
         self.authRepository = authRepository
         self.tokenStore = tokenStore
-        self.isAuthenticated = tokenStore.accessToken != nil
     }
 
     func login(email: String, password: String) async {
@@ -26,7 +25,6 @@ final class AuthViewModel {
             let result = try await authRepository.login(email: email, password: password)
             tokenStore.save(accessToken: result.accessToken, refreshToken: result.refreshToken)
             currentUser = result.user
-            isAuthenticated = true
         } catch {
             loginErrorMessage = errorMessage(from: error)
         }
@@ -40,21 +38,28 @@ final class AuthViewModel {
             let result = try await authRepository.register(email: email, displayName: displayName, password: password)
             tokenStore.save(accessToken: result.accessToken, refreshToken: result.refreshToken)
             currentUser = result.user
-            isAuthenticated = true
         } catch {
             registerErrorMessage = errorMessage(from: error)
         }
     }
 
-    func logout() async {
+    func fetchCurrentUser() async {
+        guard currentUser == nil else { return }
         do {
-            try await authRepository.logout()
-        } catch {}
+            currentUser = try await authRepository.fetchCurrentUser()
+        } catch {
+            // Non-fatal — user will just lack admin controls until next login
+        }
+    }
+
+    func logout() async {
+        if let refreshToken = tokenStore.refreshToken {
+            do { try await authRepository.logout(refreshToken: refreshToken) } catch {}
+        }
         tokenStore.clear()
         currentUser = nil
-        isAuthenticated = false
     }
-    
+
     func errorMessage(from error: Error) -> String {
         guard let repositoryError = error as? RepositoryError else {
             return "Something went wrong"

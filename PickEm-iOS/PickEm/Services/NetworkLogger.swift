@@ -33,6 +33,10 @@ enum NetworkLogger {
         let status = response.statusCode
         var output = "← \(status) \(method) \(path)  (\(ms)ms)"
 
+        if let cacheStatus = response.value(forHTTPHeaderField: "X-Cache") {
+            output += "  [odds-cache: \(cacheStatus)]"
+        }
+
         if let pretty = prettyJSON(data) {
             output += "\n\(pretty)"
         } else if !data.isEmpty, let raw = String(data: data, encoding: .utf8) {
@@ -44,6 +48,12 @@ enum NetworkLogger {
         } else {
             logger.debug("\(output)")
         }
+    }
+
+    static func logCache(hit: Bool, for key: String) {
+        let icon = hit ? "💾" : "🌐"
+        let status = hit ? "HIT" : "MISS"
+        logger.debug("\(icon) Local cache \(status): \(key)")
     }
 
     private static func prettyJSON(_ data: Data) -> String? {

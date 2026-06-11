@@ -9,7 +9,7 @@ final class PickViewModel {
 
     private let pickRepository: any PickRepositoryProtocol
     let group: Group
-    let currentUserID: String
+    var currentUserID: String
 
     init(group: Group, currentUserID: String, pickRepository: any PickRepositoryProtocol) {
         self.group = group

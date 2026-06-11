@@ -2,7 +2,7 @@ import Foundation
 
 struct GameDTO: Codable {
     let id: String
-    let weekID: String
+    let weekID: String?
     let oddsAPIID: String?
     let sport: String
     let homeTeam: String
@@ -30,7 +30,7 @@ struct GameDTO: Codable {
     func toDomain() -> Game {
         Game(
             id: id,
-            weekID: weekID,
+            weekID: weekID ?? "",
             oddsAPIID: oddsAPIID,
             sport: Sport(rawValue: sport) ?? .nfl,
             homeTeam: homeTeam,

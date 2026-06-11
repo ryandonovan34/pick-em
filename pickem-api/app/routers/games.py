@@ -12,7 +12,7 @@ slates simultaneously, so odds updates and result posting flow through once.
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from app.utils import ensure_utc, utc_now
 from sqlmodel import Session, select
 
@@ -234,6 +234,7 @@ def get_available_odds(
     sport: str = Query(..., description="Odds API sport key, e.g. 'americanfootball_nfl'"),
     group_id: Optional[uuid.UUID] = Query(None, description="Exclude games already in this group's slates"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    response: Response,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[Game]:
@@ -244,7 +245,13 @@ def get_available_odds(
     If cached odds are stale, a background re-fetch is triggered while
     current data is returned immediately.
     In development, the pool is seeded via POST /dev/mock-games.
+
+    Sets X-Cache response header: HIT | MISS:cold | MISS:stale | SKIP
     """
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    x_cache = "SKIP"
     if settings.ODDS_API_KEY:
         newest = session.exec(
             select(Game)
@@ -257,10 +264,16 @@ def get_available_odds(
         )
         if age_minutes > settings.ODDS_CACHE_TTL_MINUTES:
             if newest is None:
-                # Cold start: ingest synchronously so this request returns real data.
+                _log.info("[odds] Cache COLD for %s — ingesting synchronously", sport)
+                x_cache = "MISS:cold"
                 ingest_odds(sport)
             else:
+                _log.info("[odds] Cache STALE (%.1f min) for %s — refreshing in background", age_minutes, sport)
+                x_cache = "MISS:stale"
                 background_tasks.add_task(ingest_odds, sport)
+        else:
+            _log.info("[odds] Cache HIT for %s (%.1f min old)", sport, age_minutes)
+            x_cache = "HIT"
 
     query = select(Game).where(
         Game.sport == sport,
@@ -274,4 +287,6 @@ def get_available_odds(
         )
         query = query.where(Game.id.notin_(already_in_group))  # type: ignore[attr-defined]
 
-    return list(session.exec(query.order_by(Game.kickoff_at)).all())  # type: ignore[arg-type]
+    games = list(session.exec(query.order_by(Game.kickoff_at)).all())  # type: ignore[arg-type]
+    response.headers["X-Cache"] = x_cache
+    return games

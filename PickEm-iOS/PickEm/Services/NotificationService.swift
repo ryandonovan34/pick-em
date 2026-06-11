@@ -1,6 +1,7 @@
 import Foundation
-import UIKit
+import FirebaseMessaging
 import UserNotifications
+import UIKit
 
 @MainActor
 final class NotificationService: NSObject {
@@ -21,14 +22,19 @@ final class NotificationService: NSObject {
         }
     }
 
-    func handleDeviceToken(_ deviceToken: Data) {
-        let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
+    /// Forward the raw APNs device token to Firebase so it can issue an FCM registration token.
+    func handleAPNSToken(_ deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+
+    /// Upload the FCM registration token to the backend. Called by MessagingDelegate.
+    func uploadFCMToken(_ token: String) {
         Task {
-            try? await authRepository?.updateFCMToken(tokenString)
+            try? await authRepository?.updateFCMToken(token)
         }
     }
 
-    /// Handle a silent FCM data push. Invalidates the relevant cache scope and returns it for callers that need to trigger a re-fetch.
+    /// Handle a silent FCM data push. Invalidates the relevant cache scope.
     @discardableResult
     func handleSilentPush(_ userInfo: [AnyHashable: Any]) -> CacheScope? {
         guard let type = userInfo["type"] as? String else { return nil }

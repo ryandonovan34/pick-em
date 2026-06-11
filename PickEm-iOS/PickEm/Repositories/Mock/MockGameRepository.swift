@@ -12,8 +12,12 @@ final class MockGameRepository: GameRepositoryProtocol {
         games.filter { $0.weekID == weekID }
     }
 
-    func fetchAvailableOdds(sport: Sport, dateRange: ClosedRange<Date>?) async throws -> [Game] {
+    func fetchAvailableOdds(sport: Sport, groupID: String?) async throws -> [Game] {
         games.filter { $0.sport == sport }
+    }
+
+    func populateSlate(groupID: String) async throws -> [Week] {
+        weeks.filter { $0.groupID == groupID }
     }
 
     func createWeek(groupID: String, label: String) async throws -> Week {

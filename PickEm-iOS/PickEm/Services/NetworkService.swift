@@ -57,10 +57,30 @@ final class NetworkService {
         NetworkLogger.logRequest(request)
         let start = Date()
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw RepositoryError.unknown
-        }
+        guard let http = response as? HTTPURLResponse else { throw RepositoryError.unknown }
         NetworkLogger.logResponse(http, data: data, duration: Date().timeIntervalSince(start), for: request)
+
+        // On 401, try a token refresh and retry the original request once.
+        if http.statusCode == 401 {
+            if let newToken = try? await refreshAccessToken() {
+                // Dispatch to main actor so @Observable TokenStore mutations
+                // trigger SwiftUI re-renders on the correct thread.
+                await MainActor.run { tokenStore.saveAccessToken(newToken) }
+                var retried = request
+                retried.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+                let (data2, response2) = try await session.data(for: retried)
+                guard let http2 = response2 as? HTTPURLResponse else { throw RepositoryError.unknown }
+                return try decode(http2, data: data2)
+            } else if tokenStore.accessToken != nil {
+                // Had a session but both the access and refresh tokens are invalid — clear to force re-login.
+                await MainActor.run { tokenStore.clear() }
+            }
+        }
+
+        return try decode(http, data: data)
+    }
+
+    private func decode<T: Decodable>(_ http: HTTPURLResponse, data: Data) throws -> T {
         switch http.statusCode {
         case 200...299:
             do {
@@ -70,6 +90,9 @@ final class NetworkService {
             }
         case 401:
             throw RepositoryError.unauthorized
+        case 403:
+            let msg = APIError.extract(from: data) ?? "You don't have permission to do this."
+            throw RepositoryError.forbidden(msg)
         case 404:
             throw RepositoryError.notFound
         case 409:
@@ -79,6 +102,15 @@ final class NetworkService {
             let msg = APIError.extract(from: data) ?? "Unknown"
             throw RepositoryError.serverError(http.statusCode, msg)
         }
+    }
+
+    private func refreshAccessToken() async throws -> String {
+        guard let refreshToken = tokenStore.refreshToken else { throw RepositoryError.unauthorized }
+        struct Body: Encodable { let refresh_token: String }
+        struct Response: Decodable { let access_token: String }
+        let req = try buildRequest(method: "POST", path: "auth/refresh", body: Body(refresh_token: refreshToken))
+        let (data, _) = try await session.data(for: req)
+        return try JSONDecoder().decode(Response.self, from: data).access_token
     }
 }
 
@@ -104,8 +136,6 @@ private extension NetworkService {
 private struct APIError: Decodable {
     let detail: String
 
-    // FastAPI returns detail as a String for most errors,
-    // but as [{msg: "...", loc: [...]}] for Pydantic 422 validation errors.
     static func extract(from data: Data) -> String? {
         if let simple = try? JSONDecoder().decode(APIError.self, from: data) {
             return simple.detail
@@ -118,4 +148,5 @@ private struct APIError: Decodable {
         return nil
     }
 }
+
 private struct EmptyResponse: Decodable {}
