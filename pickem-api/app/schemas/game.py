@@ -21,7 +21,6 @@ class WeekRead(BaseModel):
 
 class GameRead(BaseModel):
     id: uuid.UUID
-    week_id: Optional[uuid.UUID]
     odds_api_id: Optional[str]
     sport: str
     home_team: str

@@ -156,12 +156,22 @@ def _schedule_results_fetch() -> None:
 # ── Internal job functions ────────────────────────────────────────────────────
 
 def _refresh_odds_job() -> None:
+    from app.database import engine
+    from app.services.auto_slate import auto_populate_all_groups
     from app.services.odds import ingest_odds
+    from sqlmodel import Session
+
     for sport in _SUPPORTED_SPORTS:
         try:
             ingest_odds(sport)
         except Exception:
             logger.exception("Odds refresh failed for sport=%s", sport)
+
+    try:
+        with Session(engine) as session:
+            auto_populate_all_groups(session)
+    except Exception:
+        logger.exception("auto_populate_all_groups failed after odds refresh")
 
 
 def _refresh_sport_job(sport: str) -> None:
@@ -231,10 +241,13 @@ def _fetch_and_process_results() -> None:
     now = utc_now()
 
     with Session(engine) as session:
+        # Only process games that are on at least one slate (have a slate_games row).
+        from app.models import SlateGame
+        slated_game_ids = select(SlateGame.game_id).distinct()
         pending = session.exec(
             select(Game).where(
                 Game.result_posted == False,  # noqa: E712
-                Game.week_id.isnot(None),  # type: ignore[union-attr]
+                Game.id.in_(slated_game_ids),  # type: ignore[attr-defined]
                 Game.kickoff_at <= now,
             )
         ).all()
@@ -260,7 +273,6 @@ def _fetch_and_process_results() -> None:
             if not game.odds_api_id or game.odds_api_id not in score_map:
                 continue
             home_score, away_score = score_map[game.odds_api_id]
-            week_id = game.week_id
             try:
                 process_game_result(game.id, home_score, away_score, session)
             except ValueError:
@@ -269,34 +281,39 @@ def _fetch_and_process_results() -> None:
                 logger.exception("Failed to process result for game %s", game.id)
                 continue
 
-            # Notify the group after each game result is committed.
+            # Notify every group that has this game on a slate.
             try:
-                week = session.get(Week, week_id)
-                if week is None:
-                    continue
-                group = session.get(Group, week.group_id)
-                if group is None:
-                    continue
+                from app.models import SlateGame
+                for sg in session.exec(select(SlateGame).where(SlateGame.game_id == game.id)).all():
+                    week = session.get(Week, sg.week_id)
+                    if week is None:
+                        continue
+                    group = session.get(Group, week.group_id)
+                    if group is None:
+                        continue
 
-                members_with_tokens = session.exec(
-                    select(User)
-                    .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
-                    .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
-                ).all()
-                tokens = [m.fcm_token for m in members_with_tokens if m.fcm_token]
+                    members_with_tokens = session.exec(
+                        select(User)
+                        .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+                        .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
+                    ).all()
+                    tokens = [m.fcm_token for m in members_with_tokens if m.fcm_token]
+                    if not tokens:
+                        continue
 
-                if not tokens:
-                    continue
+                    notifications.send_silent_cache_invalidation(
+                        tokens, "results_posted", group_id=group.id, week_id=sg.week_id
+                    )
 
-                # Silent push on every game result so iOS re-fetches immediately.
-                notifications.send_silent_cache_invalidation(
-                    tokens, "results_posted", group_id=group.id, week_id=week_id
-                )
-
-                # Alerting notification only when the full slate is done.
-                slate_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
-                if all(g.result_posted for g in slate_games):
-                    notifications.send_results_notification(tokens, group.name)
+                    # Alert only when the full slate for this group's week is done.
+                    slate_game_ids = [r.game_id for r in session.exec(
+                        select(SlateGame).where(SlateGame.week_id == sg.week_id)
+                    ).all()]
+                    slate_games = session.exec(
+                        select(Game).where(Game.id.in_(slate_game_ids))  # type: ignore[attr-defined]
+                    ).all()
+                    if all(g.result_posted for g in slate_games):
+                        notifications.send_results_notification(tokens, group.name)
 
             except Exception:
                 logger.exception("Failed to send result notifications for game %s", game.id)

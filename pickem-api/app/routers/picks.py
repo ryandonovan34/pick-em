@@ -19,7 +19,7 @@ from sqlmodel import Session, func, select
 
 from app.auth.dependencies import get_current_user
 from app.database import get_session
-from app.models import Game, Group, GroupMember, Pick, User, Week
+from app.models import Game, Group, GroupMember, Pick, SlateGame, User, Week
 from app.routers.groups import _require_member
 from app.schemas.pick import PickCreate, PickRead, PickUpdate
 
@@ -213,7 +213,11 @@ def get_picks(
     # Get all games in the week so we can check kickoff times efficiently.
     games_in_week = {
         g.id: g
-        for g in session.exec(select(Game).where(Game.week_id == week_id)).all()
+        for g in session.exec(
+            select(Game)
+            .join(SlateGame, SlateGame.game_id == Game.id)  # type: ignore[arg-type]
+            .where(SlateGame.week_id == week_id)
+        ).all()
     }
 
     all_picks = session.exec(

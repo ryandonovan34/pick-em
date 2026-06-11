@@ -20,7 +20,7 @@ from sqlmodel import Session, select
 
 from app.config import settings
 from app.database import get_session
-from app.models import Game, Group, GroupMember, User, Week
+from app.models import Game, Group, GroupMember, SlateGame, User, Week
 from app.schemas.game import GameRead, WeekRead
 from app.services import notifications
 from app.services.odds import round_spread
@@ -210,9 +210,9 @@ def seed_week(
         odds_api_id = f"mock_{body.sport}_{template['home'].replace(' ', '_')}_{template['away'].replace(' ', '_')}"
 
         existing = session.exec(select(Game).where(Game.odds_api_id == odds_api_id)).first()
-        if existing and existing.week_id is None:
+        if existing:
             games.append(existing)
-        elif existing is None:
+        else:
             game = Game(
                 odds_api_id=odds_api_id,
                 sport=body.sport,
@@ -224,7 +224,6 @@ def seed_week(
             )
             session.add(game)
             games.append(game)
-        # If existing.week_id is already set, skip it (already on another slate).
 
     session.flush()
 
@@ -237,8 +236,11 @@ def seed_week(
     session.flush()
 
     for game in games:
-        game.week_id = week.id
-        session.add(game)
+        already = session.exec(
+            select(SlateGame).where(SlateGame.week_id == week.id, SlateGame.game_id == game.id)
+        ).first()
+        if not already:
+            session.add(SlateGame(week_id=week.id, game_id=game.id))
 
     session.commit()
     session.refresh(week)
@@ -271,25 +273,31 @@ def post_mock_result(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
-    # Send notifications (no-op when FCM is not configured).
+    # Send notifications to every group that has this game in a slate.
     try:
-        week = session.get(Week, game.week_id)
-        if week:
+        for sg in session.exec(select(SlateGame).where(SlateGame.game_id == game.id)).all():
+            week = session.get(Week, sg.week_id)
+            if not week:
+                continue
             group = session.get(Group, week.group_id)
-            if group:
-                members = session.exec(
-                    select(User)
-                    .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
-                    .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
-                ).all()
-                tokens = [m.fcm_token for m in members if m.fcm_token]
-                if tokens:
-                    notifications.send_silent_cache_invalidation(
-                        tokens, "results_posted", group_id=group.id, week_id=game.week_id
-                    )
-                    slate_games = session.exec(select(Game).where(Game.week_id == game.week_id)).all()
-                    if all(g.result_posted for g in slate_games):
-                        notifications.send_results_notification(tokens, group.name)
+            if not group:
+                continue
+            members = session.exec(
+                select(User)
+                .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+                .where(GroupMember.group_id == group.id, User.fcm_token.isnot(None))  # type: ignore[union-attr]
+            ).all()
+            tokens = [m.fcm_token for m in members if m.fcm_token]
+            if tokens:
+                notifications.send_silent_cache_invalidation(
+                    tokens, "results_posted", group_id=group.id, week_id=sg.week_id
+                )
+                slate_game_ids = [r.game_id for r in session.exec(
+                    select(SlateGame).where(SlateGame.week_id == sg.week_id)
+                ).all()]
+                slate_games = session.exec(select(Game).where(Game.id.in_(slate_game_ids))).all()  # type: ignore[attr-defined]
+                if all(g.result_posted for g in slate_games):
+                    notifications.send_results_notification(tokens, group.name)
     except Exception:
         pass  # Never let notification failure break the mock-results response
 

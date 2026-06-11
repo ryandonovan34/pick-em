@@ -64,8 +64,8 @@ async def fetch_odds(sport: str) -> list[dict]:
 def ingest_odds(sport: str) -> int:
     """
     Fetch odds from The Odds API and upsert into the games table.
-    Games land in the odds pool (week_id=None) for admin slate building.
-    Already-slated games (week_id set) have their spread + kickoff updated in place.
+    New games are added to the pool; existing games have their spread + kickoff updated in place.
+    Slate membership is tracked separately via the slate_games junction table.
     Returns the count of games processed.
     """
     if not settings.ODDS_API_KEY:
@@ -75,13 +75,21 @@ def ingest_odds(sport: str) -> int:
     url = f"{settings.ODDS_API_BASE_URL}/v4/sports/{sport}/odds"
     params = {
         "apiKey": settings.ODDS_API_KEY,
+        "regions": "us",
         "markets": "spreads",
         "oddsFormat": "american",
         "dateFormat": "iso",
     }
     with httpx.Client() as client:
         response = client.get(url, params=params, timeout=30.0)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Odds API returned %s for sport '%s' — skipping ingest. Body: %s",
+                exc.response.status_code, sport, exc.response.text[:200],
+            )
+            return 0
     raw_games: list[dict] = response.json()
 
     now = utc_now()

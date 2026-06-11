@@ -84,6 +84,7 @@ def create_group(
     session.add(GroupMember(group_id=group.id, user_id=current_user.id))
     session.commit()
     session.refresh(group)
+
     return group
 
 

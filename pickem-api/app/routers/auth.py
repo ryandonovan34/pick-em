@@ -158,6 +158,14 @@ def logout(
             return
 
 
+@router.get("/me", response_model=UserRead)
+def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Return the authenticated user's profile."""
+    return current_user
+
+
 @router.put("/fcm-token", status_code=status.HTTP_204_NO_CONTENT)
 def update_fcm_token(
     body: FCMTokenUpdate,

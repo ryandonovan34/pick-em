@@ -25,6 +25,8 @@ apscheduler==3.11.0
 
 # Google OAuth2 for FCM HTTP v1 API authentication
 google-auth==2.37.0
+# Required by google.auth.transport.requests for OAuth2 token refresh
+requests==2.32.3
 
 # Testing
 pytest==8.3.4

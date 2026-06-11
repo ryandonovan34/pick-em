@@ -1,15 +1,15 @@
 """
 Week and game slate management.
 
-Weeks are the time-boxed containers for a pick slate. The admin creates weeks,
-curates the game list from the available odds pool, and the members pick from it.
+Weeks are the time-boxed containers for a pick slate. When a group is created
+the auto-slate service populates weeks automatically from the odds pool.
+Admins can still manually add or remove games from a slate.
 
-For World Cup groups, games are auto-populated once odds become available
-(Phase 3+). For now in Phase 2 the admin uses /dev/mock-games to seed the pool.
+The slate_games junction table lets the same game appear in multiple groups'
+slates simultaneously, so odds updates and result posting flow through once.
 """
 
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -19,7 +19,7 @@ from sqlmodel import Session, select
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.database import get_session
-from app.models import Game, Group, GroupMember, User, Week
+from app.models import Game, Group, GroupMember, SlateGame, User, Week
 from app.routers.groups import _require_admin, _require_member
 from app.schemas.game import AddGameToSlate, GameRead, WeekCreate, WeekRead
 from app.services.odds import ingest_odds
@@ -33,6 +33,18 @@ from app.services.scheduler import (
 )
 
 router = APIRouter()
+
+
+def _slate_games(week_id: uuid.UUID, session: Session) -> list[Game]:
+    """Return all games in a week's slate ordered by kickoff time."""
+    return list(
+        session.exec(
+            select(Game)
+            .join(SlateGame, SlateGame.game_id == Game.id)  # type: ignore[arg-type]
+            .where(SlateGame.week_id == week_id)
+            .order_by(Game.kickoff_at)  # type: ignore[arg-type]
+        ).all()
+    )
 
 
 # ── Weeks ────────────────────────────────────────────────────────────────────
@@ -65,9 +77,7 @@ def create_week(
     group = _require_member(group_id, current_user, session)
     _require_admin(group, current_user)
 
-    existing_weeks = session.exec(
-        select(Week).where(Week.group_id == group_id)
-    ).all()
+    existing_weeks = session.exec(select(Week).where(Week.group_id == group_id)).all()
     next_number = (max((w.week_number for w in existing_weeks), default=0)) + 1
 
     week = Week(group_id=group_id, week_number=next_number, label=body.label)
@@ -75,6 +85,19 @@ def create_week(
     session.commit()
     session.refresh(week)
     return week
+
+
+@router.post("/groups/{group_id}/populate", response_model=list[WeekRead])
+def populate_group_slate(
+    group_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[Week]:
+    """Re-run auto-population for a group from the odds pool. Admin only."""
+    group = _require_member(group_id, current_user, session)
+    _require_admin(group, current_user)
+    from app.services.auto_slate import auto_populate_group
+    return auto_populate_group(group, session)
 
 
 # ── Games (slate management) ─────────────────────────────────────────────────
@@ -93,13 +116,7 @@ def list_games(
     if week is None or week.group_id != group_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Week not found.")
 
-    return list(
-        session.exec(
-            select(Game)
-            .where(Game.week_id == week_id)
-            .order_by(Game.kickoff_at)  # type: ignore[arg-type]
-        ).all()
-    )
+    return _slate_games(week_id, session)
 
 
 @router.post(
@@ -115,8 +132,7 @@ def add_game_to_slate(
     current_user: User = Depends(get_current_user),
 ) -> Game:
     """
-    Add a game from the odds pool to a slate.
-    The game must exist in the pool (week_id=None) and not already be in another slate.
+    Add a game from the odds pool to a slate by its Odds API ID.
     Admin only; locked once the first game of the slate has kicked off.
     """
     group = _require_member(group_id, current_user, session)
@@ -126,33 +142,38 @@ def add_game_to_slate(
     if week is None or week.group_id != group_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Week not found.")
 
-    # Find the game in the odds pool by its Odds API ID.
-    game = session.exec(
-        select(Game).where(Game.odds_api_id == body.odds_api_id, Game.week_id.is_(None))  # type: ignore[attr-defined]
-    ).first()
+    game = session.exec(select(Game).where(Game.odds_api_id == body.odds_api_id)).first()
     if game is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No available game with odds_api_id '{body.odds_api_id}'. "
+            detail=f"No game with odds_api_id '{body.odds_api_id}'. "
                    "Check /odds/available for the current pool.",
         )
 
-    # Can't add games after the first kickoff of this slate.
-    existing_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
+    # Idempotency: already in this slate.
+    already = session.exec(
+        select(SlateGame).where(SlateGame.week_id == week_id, SlateGame.game_id == game.id)
+    ).first()
+    if already:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Game is already in this slate.",
+        )
+
+    # Lock check: can't edit after first kickoff.
+    existing = _slate_games(week_id, session)
     now = utc_now()
-    if existing_games and min(ensure_utc(g.kickoff_at) for g in existing_games) <= now:
+    if existing and min(ensure_utc(g.kickoff_at) for g in existing) <= now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify a slate after the first game has kicked off.",
         )
 
-    game.week_id = week_id
-    session.add(game)
+    session.add(SlateGame(week_id=week_id, game_id=game.id))
     session.commit()
-    session.refresh(game)
 
-    all_slate_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
-    first_kickoff = min(ensure_utc(g.kickoff_at) for g in all_slate_games)
+    all_slate = _slate_games(week_id, session)
+    first_kickoff = min(ensure_utc(g.kickoff_at) for g in all_slate)
     team_names = f"{game.away_team} at {game.home_team}"
 
     schedule_pick_reminders(game.id, group_id, ensure_utc(game.kickoff_at), team_names)
@@ -173,36 +194,30 @@ def remove_game_from_slate(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """
-    Remove a game from a slate (returns it to the odds pool).
-    Admin only; locked once the first game of the slate has kicked off.
-    """
+    """Remove a game from a slate. Admin only; locked once the first game has kicked off."""
     group = _require_member(group_id, current_user, session)
     _require_admin(group, current_user)
 
-    game = session.get(Game, game_id)
-    if game is None or game.week_id != week_id:
+    slate_game = session.exec(
+        select(SlateGame).where(SlateGame.week_id == week_id, SlateGame.game_id == game_id)
+    ).first()
+    if slate_game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found in this slate.")
 
-    # Lock check.
-    existing_games = session.exec(select(Game).where(Game.week_id == week_id)).all()
+    existing = _slate_games(week_id, session)
     now = utc_now()
-    if min((ensure_utc(g.kickoff_at) for g in existing_games), default=now + __import__("datetime").timedelta(hours=1)) <= now:
+    if min((ensure_utc(g.kickoff_at) for g in existing), default=now) <= now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot modify a slate after the first game has kicked off.",
         )
 
-    # Return to pool rather than deleting — the game data is still valid.
-    sport = game.sport
-    removed_game_id = game.id
-    game.week_id = None
-    session.add(game)
+    sport = session.get(Game, game_id).sport  # type: ignore[union-attr]
+    session.delete(slate_game)
     session.commit()
+    cancel_pick_reminders(game_id)
 
-    cancel_pick_reminders(removed_game_id)
-
-    remaining = session.exec(select(Game).where(Game.week_id == week_id)).all()
+    remaining = _slate_games(week_id, session)
     if remaining:
         first_kickoff = min(ensure_utc(g.kickoff_at) for g in remaining)
         schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
@@ -217,18 +232,18 @@ def remove_game_from_slate(
 @router.get("/odds/available", response_model=list[GameRead])
 def get_available_odds(
     sport: str = Query(..., description="Odds API sport key, e.g. 'americanfootball_nfl'"),
+    group_id: Optional[uuid.UUID] = Query(None, description="Exclude games already in this group's slates"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[Game]:
     """
-    Return games in the odds pool (week_id=None) for a given sport.
-    Admins use this to build a slate.
+    Return upcoming games for a sport that can be added to a slate.
+    Pass group_id to exclude games already assigned to that group.
 
-    If the cached data is older than ODDS_CACHE_TTL_MINUTES, a background
-    re-fetch is triggered — stale data is returned immediately.
-    In Phase 2 (development), the pool is seeded via POST /dev/mock-games.
-    In Phase 3+, the pool is populated by the Odds API scheduler.
+    If cached odds are stale, a background re-fetch is triggered while
+    current data is returned immediately.
+    In development, the pool is seeded via POST /dev/mock-games.
     """
     if settings.ODDS_API_KEY:
         newest = session.exec(
@@ -241,13 +256,22 @@ def get_available_odds(
             if newest is not None else float("inf")
         )
         if age_minutes > settings.ODDS_CACHE_TTL_MINUTES:
-            background_tasks.add_task(ingest_odds, sport)
+            if newest is None:
+                # Cold start: ingest synchronously so this request returns real data.
+                ingest_odds(sport)
+            else:
+                background_tasks.add_task(ingest_odds, sport)
 
-    return list(
-        session.exec(
-            select(Game).where(
-                Game.sport == sport,
-                Game.week_id.is_(None),  # type: ignore[attr-defined]
-            ).order_by(Game.kickoff_at)  # type: ignore[arg-type]
-        ).all()
+    query = select(Game).where(
+        Game.sport == sport,
+        Game.kickoff_at > utc_now(),
     )
+
+    if group_id is not None:
+        weeks_in_group = select(Week.id).where(Week.group_id == group_id)
+        already_in_group = select(SlateGame.game_id).where(
+            SlateGame.week_id.in_(weeks_in_group)  # type: ignore[arg-type]
+        )
+        query = query.where(Game.id.notin_(already_in_group))  # type: ignore[attr-defined]
+
+    return list(session.exec(query.order_by(Game.kickoff_at)).all())  # type: ignore[arg-type]
