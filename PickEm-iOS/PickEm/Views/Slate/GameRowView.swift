@@ -159,13 +159,14 @@ private struct PickBadge: View {
             Image(systemName: iconName)
                 .font(.caption.bold())
             // Full team name for pick display per design spec
-            Text(pick.pickedTeam + (pick.isSuperdog ? " ★" : ""))
+            Text(pick.isForfeit ? "Missed Pick" : pick.pickedTeam + (pick.isSuperdog ? " ★" : ""))
                 .font(.peLabelBold())
         }
         .foregroundStyle(badgeColor)
     }
 
     private var iconName: String {
+        if pick.isForfeit { return "exclamationmark.circle.fill" }
         switch pick.result {
         case .win, .superdogWin: return "trophy.fill"
         case .loss:              return "xmark.circle.fill"

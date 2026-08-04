@@ -76,6 +76,8 @@ def create_group(
         blind_picks=body.blind_picks,
         superdogs_enabled=body.superdogs_enabled,
         superdogs_per_user=body.superdogs_per_user,
+        include_preseason=body.include_preseason,
+        include_playoffs=body.include_playoffs,
     )
     session.add(group)
     session.flush()  # flush to get group.id before creating the membership row

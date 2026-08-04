@@ -10,7 +10,9 @@ protocol GroupRepositoryProtocol {
         seasonYear: Int?,
         blindPicks: Bool,
         superdogsEnabled: Bool,
-        superdogsPerUser: Int
+        superdogsPerUser: Int,
+        includePreseason: Bool,
+        includePlayoffs: Bool
     ) async throws -> Group
     func joinGroup(joinCode: String) async throws -> Group
     func removeMember(groupID: String, userID: String) async throws

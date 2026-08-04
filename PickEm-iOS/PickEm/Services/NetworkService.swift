@@ -83,8 +83,9 @@ final class NetworkService {
     private func decode<T: Decodable>(_ http: HTTPURLResponse, data: Data) throws -> T {
         switch http.statusCode {
         case 200...299:
+            let decodableData = data.isEmpty ? Data("{}".utf8) : data
             do {
-                return try Self.decoder.decode(T.self, from: data)
+                return try Self.decoder.decode(T.self, from: decodableData)
             } catch {
                 throw RepositoryError.decodingError(error)
             }

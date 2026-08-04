@@ -1,10 +1,22 @@
 import Foundation
 
+struct WeekGames: Identifiable {
+    let week: Week
+    var games: [Game]
+    var id: String { week.id }
+
+    var allLocked: Bool {
+        !games.isEmpty && games.allSatisfy { $0.isLocked }
+    }
+    var someLocked: Bool {
+        games.contains { $0.isLocked }
+    }
+}
+
 @Observable
 @MainActor
 final class SlateViewModel {
-    var weeks: [Week] = []
-    var games: [Game] = []
+    var weekGames: [WeekGames] = []
     var availableGames: [Game] = []
     var selectedWeek: Week?
     var isLoading = false
@@ -15,6 +27,10 @@ final class SlateViewModel {
     private let cacheService: LocalCacheService?
     let group: Group
     var currentUserID: String
+
+    // Backward-compat for SlateManageView which reads `viewModel.weeks` and `viewModel.games`
+    var weeks: [Week] { weekGames.map(\.week) }
+    var games: [Game] { weekGames.first { $0.week.id == selectedWeek?.id }?.games ?? [] }
 
     var isAdmin: Bool { group.adminID == currentUserID }
 
@@ -30,12 +46,17 @@ final class SlateViewModel {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            weeks = try await gameRepository.fetchWeeks(groupID: group.id)
-            if selectedWeek == nil {
-                selectedWeek = weeks.last
+            let fetchedWeeks = try await gameRepository.fetchWeeks(groupID: group.id)
+            var loaded: [WeekGames] = []
+            for week in fetchedWeeks {
+                let weekGames = (try? await gameRepository.fetchGames(groupID: group.id, weekID: week.id)) ?? []
+                loaded.append(WeekGames(week: week, games: weekGames.sorted { $0.kickoffAt < $1.kickoffAt }))
             }
-            if let week = selectedWeek {
-                await loadGames(for: week)
+            weekGames = loaded.sorted { $0.week.weekNumber < $1.week.weekNumber }
+
+            let selectedStillExists = fetchedWeeks.contains { $0.id == selectedWeek?.id }
+            if selectedWeek == nil || !selectedStillExists {
+                selectedWeek = Self.mostRelevantWeek(from: fetchedWeeks)
             }
         } catch {
             errorMessage = "Failed to fetch weeks: \(error.localizedDescription)"
@@ -44,24 +65,13 @@ final class SlateViewModel {
 
     func selectWeek(_ week: Week) async {
         selectedWeek = week
-        await loadGames(for: week)
-    }
-
-    func loadGames(for week: Week) async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            games = try await gameRepository.fetchGames(groupID: group.id, weekID: week.id)
-        } catch {
-            errorMessage = "Failed to fetch games: \(error.localizedDescription)"
-        }
     }
 
     func refresh() async {
-        guard let week = selectedWeek else { return }
-        cacheService?.invalidate(scope: .slate(groupID: group.id, weekID: week.id))
-        await loadGames(for: week)
+        for wg in weekGames {
+            cacheService?.invalidate(scope: .slate(groupID: group.id, weekID: wg.week.id))
+        }
+        await loadWeeks()
     }
 
     // MARK: - Admin slate management
@@ -79,18 +89,17 @@ final class SlateViewModel {
         }
     }
 
-    func createWeek(label: String) async throws -> Week {
-        let week = try await gameRepository.createWeek(groupID: group.id, label: label)
-        weeks.append(week)
-        weeks.sort { $0.weekNumber < $1.weekNumber }
+    func createWeek(label: String, startsOn: Date, endsOn: Date? = nil) async throws -> Week {
+        let week = try await gameRepository.createWeek(groupID: group.id, label: label, startsOn: startsOn, endsOn: endsOn)
+        weekGames.append(WeekGames(week: week, games: []))
+        weekGames.sort { $0.week.weekNumber < $1.week.weekNumber }
         selectedWeek = week
-        games = []
         return week
     }
 
-    func fetchAvailableOdds() async {
+    func fetchAvailableOdds(for week: Week) async {
         do {
-            availableGames = try await gameRepository.fetchAvailableOdds(sport: group.sport, groupID: group.id)
+            availableGames = try await gameRepository.fetchAvailableOdds(sport: group.sport, groupID: group.id, weekID: week.id)
         } catch {
             availableGames = []
         }
@@ -99,19 +108,34 @@ final class SlateViewModel {
     func addGame(_ game: Game, to week: Week) async throws {
         guard let oddsAPIID = game.oddsAPIID else { return }
         let added = try await gameRepository.addGameToSlate(groupID: group.id, weekID: week.id, oddsAPIID: oddsAPIID)
-        if week.id == selectedWeek?.id {
-            games.append(added)
-            games.sort { $0.kickoffAt < $1.kickoffAt }
+        if let idx = weekGames.firstIndex(where: { $0.week.id == week.id }) {
+            weekGames[idx].games.append(added)
+            weekGames[idx].games.sort { $0.kickoffAt < $1.kickoffAt }
         }
         availableGames.removeAll { $0.id == game.id }
     }
 
     func removeGame(_ game: Game, from week: Week) async throws {
         try await gameRepository.removeGameFromSlate(groupID: group.id, weekID: week.id, gameID: game.id)
-        if week.id == selectedWeek?.id {
-            games.removeAll { $0.id == game.id }
+        if let idx = weekGames.firstIndex(where: { $0.week.id == week.id }) {
+            weekGames[idx].games.removeAll { $0.id == game.id }
         }
         availableGames.append(game)
         availableGames.sort { $0.kickoffAt < $1.kickoffAt }
+    }
+
+    // Pick the most contextually relevant week:
+    // 1. Active weeks (started but not finished), earliest first
+    // 2. Upcoming weeks (not started yet), earliest first
+    // 3. Completed weeks (all done), latest as fallback
+    private static func mostRelevantWeek(from weeks: [Week]) -> Week? {
+        guard !weeks.isEmpty else { return nil }
+        if let active = weeks.filter({ $0.isActive }).min(by: { ($0.firstKickoffAt ?? .distantFuture) < ($1.firstKickoffAt ?? .distantFuture) }) {
+            return active
+        }
+        if let upcoming = weeks.filter({ $0.isUpcoming }).min(by: { ($0.firstKickoffAt ?? .distantFuture) < ($1.firstKickoffAt ?? .distantFuture) }) {
+            return upcoming
+        }
+        return weeks.last
     }
 }

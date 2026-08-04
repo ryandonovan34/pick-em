@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
-from app.models import Game, GroupMember, Pick, Standing, User
+from app.models import Game, GroupMember, Pick, SlateGame, Standing, User, Week
 
 
 def _did_favorite_cover(game: Game, home_score: int, away_score: int) -> bool:
@@ -106,6 +106,41 @@ def _recompute_standing(user_id: uuid.UUID, group_id: uuid.UUID, session: Sessio
     session.add(standing)
 
 
+def _create_forfeit_picks(game_id: uuid.UUID, picked: set[tuple[uuid.UUID, uuid.UUID]], session: Session) -> set[tuple[uuid.UUID, uuid.UUID]]:
+    """
+    Any group member who never submitted a pick for this game before kickoff
+    forfeits — auto-create a loss pick for them so it's reflected in standings.
+
+    Returns the set of (user_id, group_id) pairs that got a forfeit pick.
+    """
+    week_ids = [sg.week_id for sg in session.exec(select(SlateGame).where(SlateGame.game_id == game_id)).all()]
+    if not week_ids:
+        return set()
+
+    group_ids = {w.group_id for w in session.exec(select(Week).where(Week.id.in_(week_ids))).all()}  # type: ignore[attr-defined]
+
+    forfeited: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    for group_id in group_ids:
+        members = session.exec(select(GroupMember).where(GroupMember.group_id == group_id)).all()
+        for member in members:
+            pair = (member.user_id, group_id)
+            if pair in picked:
+                continue
+            session.add(Pick(
+                user_id=member.user_id,
+                game_id=game_id,
+                group_id=group_id,
+                picked_team="",
+                is_superdog=False,
+                result="loss",
+                is_forfeit=True,
+            ))
+            picked.add(pair)
+            forfeited.add(pair)
+
+    return forfeited
+
+
 def process_game_result(
     game_id: uuid.UUID,
     home_score: int,
@@ -117,8 +152,9 @@ def process_game_result(
 
     1. Record home_score and away_score on the game.
     2. For every pick on this game, determine 'win', 'loss', or 'superdog_win'.
-    3. Recompute the standing row for every affected user in every affected group.
-    4. Mark the game result_posted=True.
+    3. Any group member who never picked this game forfeits — auto-loss.
+    4. Recompute the standing row for every affected user in every affected group.
+    5. Mark the game result_posted=True.
 
     This runs in the caller's transaction — commit/rollback is the caller's responsibility.
     """
@@ -137,12 +173,16 @@ def process_game_result(
 
     # Track which (user_id, group_id) pairs need their standings updated.
     affected: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    picked: set[tuple[uuid.UUID, uuid.UUID]] = set()
 
     for pick in picks:
         pick.result = _pick_result(pick, game, home_score, away_score)
         pick.updated_at = datetime.now(timezone.utc)
         session.add(pick)
         affected.add((pick.user_id, pick.group_id))
+        picked.add((pick.user_id, pick.group_id))
+
+    affected |= _create_forfeit_picks(game_id, picked, session)
 
     for user_id, group_id in affected:
         _recompute_standing(user_id, group_id, session)

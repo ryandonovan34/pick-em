@@ -19,6 +19,16 @@ final class SlateViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.selectedWeek)
     }
 
+    func testLoadWeeks_selectsCurrentWeekNotEmptyUpcomingWeek() async {
+        // Regression test: mostRelevantWeek() depends on firstKickoffAt/lastKickoffAt
+        // being populated for the in-progress week. If they're missing (as they
+        // were before MockData.swift set them), this silently falls through to
+        // selecting the next upcoming (and here, empty-of-picks) week instead —
+        // the exact bug that made MockLocal look "messed up" on launch.
+        await viewModel.loadWeeks()
+        XCTAssertEqual(viewModel.selectedWeek?.id, MockData.nflWeek.id)
+    }
+
     func testLoadWeeks_loadsGamesForLatestWeek() async {
         await viewModel.loadWeeks()
         XCTAssertFalse(viewModel.games.isEmpty)

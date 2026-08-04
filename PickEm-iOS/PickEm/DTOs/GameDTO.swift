@@ -50,14 +50,29 @@ struct WeekDTO: Codable {
     let groupID: String
     let weekNumber: Int
     let label: String
+    let startsOn: String?      // "YYYY-MM-DD"
+    let endsOn: String?        // "YYYY-MM-DD"
     let createdAt: Date
+    let firstKickoffAt: Date?
+    let lastKickoffAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, label
         case groupID = "group_id"
         case weekNumber = "week_number"
+        case startsOn = "starts_on"
+        case endsOn = "ends_on"
         case createdAt = "created_at"
+        case firstKickoffAt = "first_kickoff_at"
+        case lastKickoffAt = "last_kickoff_at"
     }
+
+    private static let dateParser: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f
+    }()
 
     func toDomain() -> Week {
         Week(
@@ -65,7 +80,11 @@ struct WeekDTO: Codable {
             groupID: groupID,
             weekNumber: weekNumber,
             label: label,
-            createdAt: createdAt
+            createdAt: createdAt,
+            firstKickoffAt: firstKickoffAt,
+            lastKickoffAt: lastKickoffAt,
+            startsOn: startsOn.flatMap(Self.dateParser.date(from:)),
+            endsOn: endsOn.flatMap(Self.dateParser.date(from:))
         )
     }
 }

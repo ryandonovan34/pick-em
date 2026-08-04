@@ -176,3 +176,20 @@ def update_fcm_token(
     current_user.fcm_token = body.fcm_token
     session.add(current_user)
     session.commit()
+
+
+@router.post("/test-notification", status_code=status.HTTP_204_NO_CONTENT)
+def send_test_notification(
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """
+    Fire a test push notification to the calling user's registered device.
+    Returns 204 if the send was attempted, 409 if no FCM token is registered.
+    """
+    if not current_user.fcm_token:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No FCM token registered for this user. Open the app on a physical device first.",
+        )
+    from app.services import notifications
+    notifications.send_pick_reminder(current_user.fcm_token, "Test Match @ PickEm", 15)

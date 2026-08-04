@@ -10,11 +10,12 @@ struct CreateGroupView: View {
     @State private var blindPicks = false
     @State private var superdogsEnabled = false
     @State private var superdogsPerUser = 3
+    @State private var includePreseason = false
+    @State private var includePlayoffs = true
 
     private var sportForMode: Sport {
         switch mode {
         case .season: return .nfl
-        case .worldCup: return .worldCup
         }
     }
 
@@ -69,6 +70,22 @@ struct CreateGroupView: View {
             }
             .listRowBackground(AdaptiveColor.peSurfaceLow)
 
+            Section {
+                Toggle("Include Preseason", isOn: $includePreseason)
+                    .foregroundStyle(AdaptiveColor.peOnSurface)
+                    .tint(Color.peLimeFill)
+                Toggle("Include Playoffs", isOn: $includePlayoffs)
+                    .foregroundStyle(AdaptiveColor.peOnSurface)
+                    .tint(Color.peLimeFill)
+            } header: {
+                Text("SCHEDULE")
+                    .font(.peLabelBold())
+                    .foregroundStyle(AdaptiveColor.peOnSurfaceVar)
+            } footer: {
+                Text("Controls which weeks are auto-populated from the schedule. You can still manually add a preseason or playoff week later either way.")
+            }
+            .listRowBackground(AdaptiveColor.peSurfaceLow)
+
             if let error = viewModel.errorMessage {
                 Section {
                     Text(error)
@@ -98,7 +115,9 @@ struct CreateGroupView: View {
                             seasonYear: seasonYear,
                             blindPicks: blindPicks,
                             superdogsEnabled: superdogsEnabled,
-                            superdogsPerUser: superdogsPerUser
+                            superdogsPerUser: superdogsPerUser,
+                            includePreseason: includePreseason,
+                            includePlayoffs: includePlayoffs
                         )
                         if group != nil { dismiss() }
                     }

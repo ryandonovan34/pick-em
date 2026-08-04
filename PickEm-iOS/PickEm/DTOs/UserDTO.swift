@@ -46,6 +46,8 @@ struct GroupDTO: Codable {
     let blindPicks: Bool
     let superdogsEnabled: Bool
     let superdogsPerUser: Int
+    let includePreseason: Bool
+    let includePlayoffs: Bool
     let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
@@ -56,6 +58,8 @@ struct GroupDTO: Codable {
         case blindPicks = "blind_picks"
         case superdogsEnabled = "superdogs_enabled"
         case superdogsPerUser = "superdogs_per_user"
+        case includePreseason = "include_preseason"
+        case includePlayoffs = "include_playoffs"
         case createdAt = "created_at"
     }
 
@@ -71,6 +75,8 @@ struct GroupDTO: Codable {
             blindPicks: blindPicks,
             superdogsEnabled: superdogsEnabled,
             superdogsPerUser: superdogsPerUser,
+            includePreseason: includePreseason,
+            includePlayoffs: includePlayoffs,
             createdAt: createdAt
         )
     }

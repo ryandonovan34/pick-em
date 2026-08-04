@@ -18,7 +18,7 @@ from app.services import notifications
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_SPORTS = ["americanfootball_nfl", "soccer_fifa_world_cup"]
+_SUPPORTED_SPORTS = ["americanfootball_nfl"]
 
 scheduler = BackgroundScheduler(timezone="UTC")
 

@@ -31,6 +31,18 @@ final class PickViewModel {
         }
     }
 
+    func loadAllPicks(groupID: String) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let allPicks = try await pickRepository.fetchAllPicks(groupID: groupID)
+            picks = Dictionary(uniqueKeysWithValues: allPicks.map { ($0.gameID, $0) })
+        } catch {
+            errorMessage = "Failed to retrieve picks: \(error.localizedDescription)"
+        }
+    }
+
     func submitOrUpdate(game: Game, pickedTeam: String, isSuperdog: Bool) async {
         guard !game.isLocked else {
             errorMessage = "This game has already kicked off."

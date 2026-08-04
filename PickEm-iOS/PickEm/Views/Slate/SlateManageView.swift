@@ -3,67 +3,25 @@ import SwiftUI
 struct SlateManageView: View {
     @Environment(\.dismiss) private var dismiss
     var viewModel: SlateViewModel
-    @State private var managedWeekID: String?
-    @State private var showNewWeekAlert = false
-    @State private var newWeekLabel = ""
     @State private var alertError: String?
 
-    private var managedWeek: Week? {
-        viewModel.weeks.first { $0.id == managedWeekID }
-            ?? viewModel.selectedWeek
-    }
+    private var week: Week? { viewModel.selectedWeek }
 
     var body: some View {
         NavigationStack {
             List {
-                populateSection
-
-                if viewModel.weeks.isEmpty {
-                    noWeeksSection
-                } else {
-                    if viewModel.weeks.count > 1 {
-                        weekPickerSection
-                    }
-                    if let week = managedWeek {
-                        currentSlateSection(week: week)
-                        availableGamesSection(week: week)
-                    }
+                if let week {
+                    currentSlateSection(week: week)
+                    availableGamesSection(week: week)
                 }
             }
-            .navigationTitle("Manage Slate")
+            .navigationTitle("Manage Week")
             .navigationBarTitleDisplayMode(.inline)
             .peNavBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
-                if !viewModel.weeks.isEmpty {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            newWeekLabel = ""
-                            showNewWeekAlert = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                    }
-                }
-            }
-            .alert("New Week", isPresented: $showNewWeekAlert) {
-                TextField("Label (e.g. Week 1)", text: $newWeekLabel)
-                Button("Create") {
-                    let label = newWeekLabel.trimmingCharacters(in: .whitespaces)
-                    guard !label.isEmpty else { return }
-                    Task {
-                        do {
-                            let week = try await viewModel.createWeek(label: label)
-                            managedWeekID = week.id
-                            await viewModel.fetchAvailableOdds()
-                        } catch {
-                            alertError = error.localizedDescription
-                        }
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
             }
             .alert("Error", isPresented: Binding(
                 get: { alertError != nil },
@@ -75,89 +33,26 @@ struct SlateManageView: View {
             }
         }
         .task {
-            managedWeekID = viewModel.selectedWeek?.id
-            await viewModel.fetchAvailableOdds()
-        }
-        .onChange(of: viewModel.selectedWeek) { _, newWeek in
-            managedWeekID = newWeek?.id
+            if let week { await viewModel.fetchAvailableOdds(for: week) }
         }
     }
 
-    // MARK: - Sections
-
-    private var populateSection: some View {
-        Section {
-            Button {
-                Task {
-                    await viewModel.populate()
-                    managedWeekID = viewModel.selectedWeek?.id
-                    await viewModel.fetchAvailableOdds()
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    if viewModel.isPopulating {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(AdaptiveColor.pePrimary)
-                    }
-                    Text("Populate from Pool")
-                        .foregroundStyle(AdaptiveColor.pePrimary)
-                }
-            }
-            .disabled(viewModel.isPopulating)
-        } footer: {
-            Text("Auto-creates weeks from available pool games, grouped by NFL week.")
-        }
-    }
-
-    private var noWeeksSection: some View {
-        Section {
-            Button {
-                newWeekLabel = ""
-                showNewWeekAlert = true
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(AdaptiveColor.pePrimary)
-                    Text("Create First Week")
-                        .foregroundStyle(AdaptiveColor.pePrimary)
-                }
-            }
-        }
-    }
-
-    private var weekPickerSection: some View {
-        Section {
-            Picker("Week", selection: $managedWeekID) {
-                ForEach(viewModel.weeks) { week in
-                    Text(week.label).tag(Optional(week.id))
-                }
-            }
-        }
-        .onChange(of: managedWeekID) { _, newID in
-            guard let newID,
-                  let week = viewModel.weeks.first(where: { $0.id == newID }) else { return }
-            Task { await viewModel.selectWeek(week) }
-        }
-    }
+    // MARK: - Current slate
 
     private func currentSlateSection(week: Week) -> some View {
-        let slateLocked = viewModel.games.contains { $0.isLocked }
-        return Section("In This Slate (\(viewModel.games.count))") {
+        Section("In This Week (\(viewModel.games.count))") {
             if viewModel.isLoading {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Loading…")
-                        .foregroundStyle(.secondary)
+                    Text("Loading…").foregroundStyle(.secondary)
                 }
             } else if viewModel.games.isEmpty {
                 Text("No games yet — add some below")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
             } else {
-                if slateLocked {
-                    Label("Slate is locked — games have kicked off", systemImage: "lock.fill")
+                if viewModel.games.contains(where: { $0.isLocked }) {
+                    Label("Some games have kicked off and are locked", systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -176,10 +71,12 @@ struct SlateManageView: View {
         }
     }
 
+    // MARK: - Available games
+
     private func availableGamesSection(week: Week) -> some View {
         Section("Available to Add (\(viewModel.availableGames.count))") {
             if viewModel.availableGames.isEmpty {
-                Text("No additional games in the pool")
+                Text("No additional games in the pool for this week")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
             } else {
@@ -199,7 +96,7 @@ struct SlateManageView: View {
     }
 }
 
-// MARK: - Game row for manage view
+// MARK: - Game row
 
 private struct ManageGameRow: View {
     let game: Game

@@ -26,8 +26,7 @@ class TestRoundSpread:
         assert round_spread(-14.0) == -14.5
         assert round_spread(-14.5) == -14.5
 
-    def test_typical_soccer_spreads(self):
-        # Soccer spreads are usually small — should work the same way.
+    def test_small_spreads(self):
         assert round_spread(-1.0) == -1.5
         assert round_spread(-1.5) == -1.5
         assert round_spread(-0.5) == -0.5  # already half-point

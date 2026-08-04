@@ -11,7 +11,7 @@ final class DTOMappingTests: XCTestCase {
             sport: "americanfootball_nfl",
             homeTeam: "Chiefs", awayTeam: "Raiders",
             spread: -7.5, favoriteTeam: "Chiefs",
-            kickoffAt: "2025-11-16T18:00:00Z",
+            kickoffAt: Date(),
             homeScore: nil, awayScore: nil, resultPosted: false
         )
         let game = dto.toDomain()
@@ -19,11 +19,6 @@ final class DTOMappingTests: XCTestCase {
         XCTAssertEqual(game.sport, .nfl)
         XCTAssertEqual(game.spread, -7.5)
         XCTAssertFalse(game.resultPosted)
-    }
-
-    func testGameDTO_worldCupSport_mapsToWorldCup() {
-        let dto = makeGameDTO(sport: "soccer_fifa_world_cup")
-        XCTAssertEqual(dto.toDomain().sport, .worldCup)
     }
 
     func testGameDTO_unknownSport_fallsBackToNFL() {
@@ -66,13 +61,18 @@ final class DTOMappingTests: XCTestCase {
         XCTAssertFalse(makePickDTO(isSuperdog: false).toDomain().isSuperdog)
     }
 
+    func testPickDTO_isForfeit_mapsCorrectly() {
+        XCTAssertTrue(makePickDTO(isForfeit: true).toDomain().isForfeit)
+        XCTAssertFalse(makePickDTO(isForfeit: false).toDomain().isForfeit)
+    }
+
     // MARK: - StandingDTO
 
     func testStandingDTO_mapsToDomain() {
         let dto = StandingDTO(
             userID: "u1", groupID: "g1", displayName: "Alice",
             wins: 7, losses: 3, superdogWins: 1, superdogsUsed: 1,
-            updatedAt: "2025-11-16T10:00:00Z"
+            updatedAt: Date()
         )
         let standing = dto.toDomain()
         XCTAssertEqual(standing.wins, 7)
@@ -87,7 +87,7 @@ final class DTOMappingTests: XCTestCase {
     func testUserDTO_mapsToDomain() {
         let dto = UserDTO(
             id: "u1", email: "alice@example.com", displayName: "Alice",
-            fcmToken: "token-abc", createdAt: "2025-01-01T00:00:00Z"
+            fcmToken: "token-abc", createdAt: Date()
         )
         let user = dto.toDomain()
         XCTAssertEqual(user.id, "u1")
@@ -99,7 +99,7 @@ final class DTOMappingTests: XCTestCase {
     func testUserDTO_nilFcmToken_mapsToNil() {
         let dto = UserDTO(
             id: "u1", email: "alice@example.com", displayName: "Alice",
-            fcmToken: nil, createdAt: "2025-01-01T00:00:00Z"
+            fcmToken: nil, createdAt: Date()
         )
         XCTAssertNil(dto.toDomain().fcmToken)
     }
@@ -111,13 +111,6 @@ final class DTOMappingTests: XCTestCase {
         let group = dto.toDomain()
         XCTAssertEqual(group.sport, .nfl)
         XCTAssertEqual(group.mode, .season)
-    }
-
-    func testGroupDTO_worldCupMode_mapsToDomain() {
-        let dto = makeGroupDTO(sport: "soccer_fifa_world_cup", mode: "worldCup")
-        let group = dto.toDomain()
-        XCTAssertEqual(group.sport, .worldCup)
-        XCTAssertEqual(group.mode, .worldCup)
     }
 
     func testGroupDTO_unknownSport_fallsBackToNFL() {
@@ -150,19 +143,20 @@ final class DTOMappingTests: XCTestCase {
             sport: sport,
             homeTeam: "Home", awayTeam: "Away",
             spread: -3.5, favoriteTeam: "Home",
-            kickoffAt: "2026-06-15T18:00:00Z",
+            kickoffAt: Date(),
             homeScore: homeScore, awayScore: awayScore,
             resultPosted: resultPosted
         )
     }
 
-    private func makePickDTO(result: String = "pending", isSuperdog: Bool = false) -> PickDTO {
+    private func makePickDTO(result: String = "pending", isSuperdog: Bool = false, isForfeit: Bool = false) -> PickDTO {
         PickDTO(
             id: "p1", userID: "u1", gameID: "g1", groupID: "grp1",
             pickedTeam: "Home", isSuperdog: isSuperdog,
             result: result,
-            createdAt: "2026-06-15T10:00:00Z",
-            updatedAt: "2026-06-15T10:00:00Z"
+            isForfeit: isForfeit,
+            createdAt: Date(),
+            updatedAt: Date()
         )
     }
 
@@ -178,7 +172,9 @@ final class DTOMappingTests: XCTestCase {
             blindPicks: false,
             superdogsEnabled: superdogsEnabled,
             superdogsPerUser: superdogsPerUser,
-            createdAt: "2026-01-01T00:00:00Z"
+            includePreseason: false,
+            includePlayoffs: true,
+            createdAt: Date()
         )
     }
 }

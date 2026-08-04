@@ -29,5 +29,8 @@ class Pick(SQLModel, table=True):
     is_superdog: bool = Field(default=False)
     # 'pending' until the game result is posted; then 'win', 'loss', or 'superdog_win'.
     result: str = Field(default="pending", max_length=20)
+    # True when this pick was auto-created because the user never picked before
+    # kickoff. Always paired with result='loss'. picked_team is "" for these.
+    is_forfeit: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_utc_now)
     updated_at: datetime = Field(default_factory=_utc_now)

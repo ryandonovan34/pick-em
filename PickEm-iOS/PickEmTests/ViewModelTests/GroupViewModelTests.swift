@@ -22,7 +22,8 @@ final class GroupViewModelTests: XCTestCase {
         let group = await viewModel.createGroup(
             name: "Test Group", sport: .nfl, mode: .season,
             seasonYear: 2025, blindPicks: true,
-            superdogsEnabled: false, superdogsPerUser: 3
+            superdogsEnabled: false, superdogsPerUser: 3,
+            includePreseason: false, includePlayoffs: true
         )
         XCTAssertNotNil(group)
         XCTAssertEqual(viewModel.groups.count, initialCount + 1)

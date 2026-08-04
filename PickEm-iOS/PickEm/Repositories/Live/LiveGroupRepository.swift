@@ -24,17 +24,21 @@ final class LiveGroupRepository: GroupRepositoryProtocol {
         seasonYear: Int?,
         blindPicks: Bool,
         superdogsEnabled: Bool,
-        superdogsPerUser: Int
+        superdogsPerUser: Int,
+        includePreseason: Bool,
+        includePlayoffs: Bool
     ) async throws -> Group {
         struct CreateGroupBody: Encodable {
             let name: String; let sport: String; let mode: String
             let season_year: Int?; let blind_picks: Bool
             let superdogs_enabled: Bool; let superdogs_per_user: Int
+            let include_preseason: Bool; let include_playoffs: Bool
         }
         let body = CreateGroupBody(
             name: name, sport: sport.rawValue, mode: mode.rawValue,
             season_year: seasonYear, blind_picks: blindPicks,
-            superdogs_enabled: superdogsEnabled, superdogs_per_user: superdogsPerUser
+            superdogs_enabled: superdogsEnabled, superdogs_per_user: superdogsPerUser,
+            include_preseason: includePreseason, include_playoffs: includePlayoffs
         )
         let dto: GroupDTO = try await network.post("/groups", body: body)
         return dto.toDomain()

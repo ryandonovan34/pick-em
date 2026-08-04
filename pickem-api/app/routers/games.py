@@ -10,10 +10,12 @@ slates simultaneously, so odds updates and result posting flow through once.
 """
 
 import uuid
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from app.utils import ensure_utc, utc_now
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.auth.dependencies import get_current_user
@@ -22,6 +24,7 @@ from app.database import get_session
 from app.models import Game, Group, GroupMember, SlateGame, User, Week
 from app.routers.groups import _require_admin, _require_member
 from app.schemas.game import AddGameToSlate, GameRead, WeekCreate, WeekRead
+from app.services.nfl_calendar import local_date, monday_of, nfl_week_number_and_label
 from app.services.odds import ingest_odds
 from app.services.scheduler import (
     cancel_odds_refresh_for_slate,
@@ -49,21 +52,51 @@ def _slate_games(week_id: uuid.UUID, session: Session) -> list[Game]:
 
 # ── Weeks ────────────────────────────────────────────────────────────────────
 
+def _week_end(week: Week) -> Optional[date]:
+    """The last day of this week's window. Explicit ends_on wins; falls back
+    to the standard NFL week when unset — Thursday through the FOLLOWING
+    Monday (Monday Night Football), which is +7 days from a Monday-anchored
+    starts_on, not +6 (a real NFL week never fits Mon-Sun; it structurally
+    always runs into the next ISO week for its Monday game)."""
+    if week.ends_on:
+        return week.ends_on
+    return (week.starts_on + timedelta(days=7)) if week.starts_on else None
+
+
+def _week_to_read(week: Week, session: Session) -> WeekRead:
+    games = _slate_games(week.id, session)
+    first_kickoff = min((g.kickoff_at for g in games), default=None)
+    last_kickoff = max((g.kickoff_at for g in games), default=None)
+    ends_on = _week_end(week)
+    return WeekRead(
+        id=week.id,
+        group_id=week.group_id,
+        week_number=week.week_number,
+        label=week.label,
+        starts_on=week.starts_on,
+        ends_on=ends_on,
+        created_at=week.created_at,
+        first_kickoff_at=first_kickoff,
+        last_kickoff_at=last_kickoff,
+    )
+
+
 @router.get("/groups/{group_id}/weeks", response_model=list[WeekRead])
 def list_weeks(
     group_id: uuid.UUID,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> list[Week]:
+) -> list[WeekRead]:
     """Return all weeks/slates for a group, ordered by week_number."""
     _require_member(group_id, current_user, session)
-    return list(
+    weeks = list(
         session.exec(
             select(Week)
             .where(Week.group_id == group_id)
             .order_by(Week.week_number)  # type: ignore[arg-type]
         ).all()
     )
+    return [_week_to_read(w, session) for w in weeks]
 
 
 @router.post("/groups/{group_id}/weeks", response_model=WeekRead, status_code=status.HTTP_201_CREATED)
@@ -72,19 +105,49 @@ def create_week(
     body: WeekCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> Week:
-    """Create a new week/slate. Admin only."""
+) -> WeekRead:
+    """Create a new week/slate anchored to a calendar week (Mon–Sun). Admin only."""
     group = _require_member(group_id, current_user, session)
     _require_admin(group, current_user)
 
-    existing_weeks = session.exec(select(Week).where(Week.group_id == group_id)).all()
-    next_number = (max((w.week_number for w in existing_weeks), default=0)) + 1
+    # week_number is derived from the RAW starts_on (before Monday-snapping) —
+    # NFL weeks are Thursday-anchored, so deriving it from an already-snapped
+    # date can misclassify dates near the season boundary. starts_on itself
+    # is still stored snapped to Monday for calendar-window purposes.
+    week_number = body.week_number
+    if week_number is None:
+        week_number, _label = nfl_week_number_and_label(body.starts_on, group.season_year)
+    snapped_starts_on = monday_of(body.starts_on)
 
-    week = Week(group_id=group_id, week_number=next_number, label=body.label)
+    existing_weeks = session.exec(select(Week).where(Week.group_id == group_id)).all()
+
+    # Prevent duplicate weeks for the same calendar week or NFL week number.
+    if any(w.starts_on == snapped_starts_on for w in existing_weeks):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A week starting on {snapped_starts_on} already exists for this group.",
+        )
+    if any(w.week_number == week_number for w in existing_weeks):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A week with week_number={week_number} already exists for this group.",
+        )
+
+    week = Week(
+        group_id=group_id, week_number=week_number, label=body.label,
+        starts_on=snapped_starts_on, ends_on=body.ends_on,
+    )
     session.add(week)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A week with week_number={week_number} already exists for this group.",
+        )
     session.refresh(week)
-    return week
+    return _week_to_read(week, session)
 
 
 @router.post("/groups/{group_id}/populate", response_model=list[WeekRead])
@@ -160,15 +223,30 @@ def add_game_to_slate(
             detail="Game is already in this slate.",
         )
 
-    # Lock check: can't edit after first kickoff.
-    existing = _slate_games(week_id, session)
+    # Calendar-week enforcement: game must kick off within this week's window.
+    # Uses local_date (ET), not the raw UTC date — an 8+ PM ET kickoff (Sunday/
+    # Monday night football) is already the next day in UTC.
+    if week.starts_on is not None:
+        game_date = local_date(ensure_utc(game.kickoff_at))
+        week_end = _week_end(week)
+        if not (week.starts_on <= game_date <= week_end):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Game kicks off on {game_date} (ET), which is outside this week's "
+                    f"window ({week.starts_on} – {week_end}). Add it to the correct week."
+                ),
+            )
+
     now = utc_now()
-    if existing and min(ensure_utc(g.kickoff_at) for g in existing) <= now:
+    if ensure_utc(game.kickoff_at) <= now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify a slate after the first game has kicked off.",
+            detail="Cannot add a game that has already kicked off.",
         )
 
+    existing = _slate_games(week_id, session)
+    slate_was_empty = len(existing) == 0
     session.add(SlateGame(week_id=week_id, game_id=game.id))
     session.commit()
 
@@ -179,6 +257,25 @@ def add_game_to_slate(
     schedule_pick_reminders(game.id, group_id, ensure_utc(game.kickoff_at), team_names)
     schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
     schedule_odds_refresh_for_slate(week_id, game.sport, first_kickoff)
+
+    week = session.get(Week, week_id)
+    members_with_tokens = session.exec(
+        select(User)
+        .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+        .where(
+            GroupMember.group_id == group_id,
+            User.fcm_token.isnot(None),  # type: ignore[union-attr]
+            User.id != current_user.id,
+        )
+    ).all()
+    tokens = [m.fcm_token for m in members_with_tokens if m.fcm_token]
+    if tokens and week:
+        if slate_was_empty:
+            from app.services.notifications import send_slate_ready
+            send_slate_ready(tokens, group.name, week.label)
+        else:
+            from app.services.notifications import send_game_added
+            send_game_added(tokens, group.name, week.label, game.away_team, game.home_team)
 
     return game
 
@@ -204,15 +301,16 @@ def remove_game_from_slate(
     if slate_game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found in this slate.")
 
-    existing = _slate_games(week_id, session)
-    now = utc_now()
-    if min((ensure_utc(g.kickoff_at) for g in existing), default=now) <= now:
+    game_to_remove = session.get(Game, game_id)
+    if game_to_remove is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+    if ensure_utc(game_to_remove.kickoff_at) <= utc_now():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify a slate after the first game has kicked off.",
+            detail="Cannot remove a game that has already kicked off.",
         )
 
-    sport = session.get(Game, game_id).sport  # type: ignore[union-attr]
+    sport = game_to_remove.sport
     session.delete(slate_game)
     session.commit()
     cancel_pick_reminders(game_id)
@@ -231,10 +329,11 @@ def remove_game_from_slate(
 
 @router.get("/odds/available", response_model=list[GameRead])
 def get_available_odds(
+    response: Response,
     sport: str = Query(..., description="Odds API sport key, e.g. 'americanfootball_nfl'"),
     group_id: Optional[uuid.UUID] = Query(None, description="Exclude games already in this group's slates"),
+    week_id: Optional[uuid.UUID] = Query(None, description="Restrict to games within this week's Mon–Sun window"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    response: Response,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[Game]:
@@ -286,6 +385,22 @@ def get_available_odds(
             SlateGame.week_id.in_(weeks_in_group)  # type: ignore[arg-type]
         )
         query = query.where(Game.id.notin_(already_in_group))  # type: ignore[attr-defined]
+
+    # If a specific week is requested, restrict to that week's date window.
+    # Compares in ET, not UTC — an 8+ PM ET kickoff (Sunday/Monday night
+    # football) is already the next day in UTC, which would otherwise
+    # silently exclude/include games on the wrong side of the boundary.
+    if week_id is not None:
+        target_week = session.get(Week, week_id)
+        if target_week is not None and target_week.starts_on is not None:
+            from sqlalchemy import func, cast
+            from sqlalchemy.types import Date as SADate
+            week_start = target_week.starts_on
+            week_end_exclusive = _week_end(target_week) + timedelta(days=1)
+            query = query.where(
+                cast(func.timezone("America/New_York", Game.kickoff_at), SADate) >= week_start,  # type: ignore[arg-type]
+                cast(func.timezone("America/New_York", Game.kickoff_at), SADate) < week_end_exclusive,    # type: ignore[arg-type]
+            )
 
     games = list(session.exec(query.order_by(Game.kickoff_at)).all())  # type: ignore[arg-type]
     response.headers["X-Cache"] = x_cache

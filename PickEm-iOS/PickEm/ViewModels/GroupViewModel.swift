@@ -32,7 +32,9 @@ final class GroupViewModel {
         seasonYear: Int?,
         blindPicks: Bool,
         superdogsEnabled: Bool,
-        superdogsPerUser: Int
+        superdogsPerUser: Int,
+        includePreseason: Bool,
+        includePlayoffs: Bool
     ) async -> Group? {
         isLoading = true
         errorMessage = nil
@@ -41,7 +43,8 @@ final class GroupViewModel {
             let group = try await groupRepository.createGroup(
                 name: name, sport: sport, mode: mode,
                 seasonYear: seasonYear, blindPicks: blindPicks,
-                superdogsEnabled: superdogsEnabled, superdogsPerUser: superdogsPerUser
+                superdogsEnabled: superdogsEnabled, superdogsPerUser: superdogsPerUser,
+                includePreseason: includePreseason, includePlayoffs: includePlayoffs
             )
             groups.append(group)
             return group

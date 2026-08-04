@@ -2,16 +2,15 @@
 
 ## Overview
 
-Build a full-stack sports pick'em challenge app. Users join groups, pick games against the spread, and compete on a season-long leaderboard. The app supports two challenge modes — a structured NFL season mode and a structured FIFA World Cup tournament mode.
+Build a full-stack NFL pick'em challenge app. Users join groups, pick games against the spread, and compete on a season-long leaderboard.
 
 ---
 
 ## Business Requirements
 
-### Challenge Modes
+### Challenge Mode
 
-- **Season Mode** — Tied to a full sport season (NFL). Weekly picks run for the entire season including playoffs and championship games. Records accumulate across the full season.
-- **World Cup Mode** — Tied to the FIFA World Cup tournament. Every game is included: all group stage matchdays, Round of 32, Round of 16, Quarter-Finals, Semi-Finals, and the Final. Records accumulate across the full tournament. The 2026 World Cup (48 teams) is the initial supported year.
+- **Season Mode** — Tied to a full NFL season. Weekly picks run for the entire season including playoffs and championship games. Records accumulate across the full season.
 
 ### Groups
 
@@ -24,8 +23,7 @@ Build a full-stack sports pick'em challenge app. Users join groups, pick games a
 ### Game Selection (Admin)
 
 - The admin selects which games are included in each week's pick slate from available games returned by the odds system.
-- For NFL, this typically includes every primetime game plus a curated set of Sunday afternoon games and all playoff/Super Bowl games.
-- For World Cup, all games in a round are automatically included in the slate once odds become available — the admin does not need to curate them manually. The admin can still remove individual games if needed.
+- This typically includes every primetime game plus a curated set of Sunday afternoon games and all playoff/Super Bowl games.
 - The admin can add or remove games from the slate up until the first game of that slate kicks off.
 
 ### Spreads & Scoring Rules
@@ -147,7 +145,7 @@ The Odds API charges per request. The app always reads from Postgres — never d
 
 - Controlled via an environment variable: `APP_ENV=development | production`
 - In `development` mode:
-  - A `/dev/mock-games` endpoint allows seeding the database with realistic mock game data (teams, spreads, kickoff times) for either supported sport (NFL or World Cup), without hitting The Odds API
+  - A `/dev/mock-games` endpoint allows seeding the database with realistic mock NFL game data (teams, spreads, kickoff times), without hitting The Odds API
   - A `/dev/mock-results` endpoint allows simulating game results for any seeded mock game, triggering the same result processing pipeline as real games
   - The odds fetch scheduler is disabled; all game data comes from mock seeds
   - These `/dev/` endpoints are completely unavailable in `production` mode (return 404)
@@ -183,8 +181,8 @@ PickEm/
 │   │   ├── Week.swift
 │   │   └── Standing.swift
 │   └── Enums/
-│       ├── Sport.swift              # nfl, worldCup
-│       ├── ChallengeMode.swift      # season, worldCup
+│       ├── Sport.swift              # nfl
+│       ├── ChallengeMode.swift      # season
 │       └── PickResult.swift
 ├── DTOs/
 │   ├── UserDTO.swift
@@ -322,12 +320,14 @@ groups (
   name                TEXT NOT NULL,
   admin_id            UUID REFERENCES users(id),
   join_code           TEXT UNIQUE NOT NULL,     -- short alphanumeric, generated on create
-  sport               TEXT NOT NULL,            -- 'americanfootball_nfl', 'soccer_fifa_world_cup'
-  mode                TEXT NOT NULL,            -- 'season' | 'worldCup'
-  season_year         INT NOT NULL,             -- e.g. 2025 for NFL, 2026 for World Cup
+  sport               TEXT NOT NULL,            -- 'americanfootball_nfl'
+  mode                TEXT NOT NULL,            -- 'season'
+  season_year         INT NOT NULL,             -- e.g. 2025
   blind_picks         BOOLEAN DEFAULT TRUE,     -- if true, picks hidden until kickoff
   superdogs_enabled   BOOLEAN DEFAULT FALSE,    -- if true, superdog declarations allowed
   superdogs_per_user  INT DEFAULT 3,            -- max superdog declarations per user; ignored if superdogs_enabled=false
+  include_preseason   BOOLEAN DEFAULT FALSE,    -- governs auto-population only; admin can still manually add a preseason week
+  include_playoffs    BOOLEAN DEFAULT TRUE,     -- governs auto-population only; admin can still manually add a playoff week
   created_at          TIMESTAMPTZ DEFAULT now()
 )
 
@@ -344,7 +344,7 @@ weeks (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id      UUID REFERENCES groups(id) ON DELETE CASCADE,
   week_number   INT NOT NULL,
-  label         TEXT NOT NULL,            -- e.g. "Week 12", "Playoffs - Divisional", "Group Stage - Matchday 1", "Round of 16"
+  label         TEXT NOT NULL,            -- e.g. "Week 12", "Playoffs - Divisional"
   created_at    TIMESTAMPTZ DEFAULT now()
 )
 
@@ -440,7 +440,7 @@ GET    /groups/{id}/standings  (auth, member) → leaderboard sorted by win%, th
 ```
 POST   /dev/mock-games        { sport, week_label, game_count } → seeds mock games into DB
 POST   /dev/mock-results      { game_id, home_score, away_score } → posts result, triggers result pipeline
-GET    /dev/mock-templates    → returns available mock game templates (teams, typical spreads) for NFL and World Cup
+GET    /dev/mock-templates    → returns available mock game templates (teams, typical spreads) for NFL
 ```
 
 ---
@@ -569,12 +569,12 @@ FCM_PROJECT_ID=your-firebase-project-id
 ## General Implementer Notes
 
 - Use Alembic from day one — never manually alter the DB schema
-- The Odds API sport key for NFL is `americanfootball_nfl`; for FIFA World Cup it is `soccer_fifa_world_cup`
+- The Odds API sport key for NFL is `americanfootball_nfl`
 - The Odds API `spreads` market returns `point` (the spread value) and `price` (the juice) per outcome — only `point` is needed
 - FCM HTTP v1 API requires a Google service account OAuth2 token, not just a server key — handle token refresh in `notifications.py`
 - All timestamps stored and returned as UTC; iOS formats for local display
 - Join codes should be 6-character alphanumeric, uppercase, regeneratable by admin
-- Superdog availability is driven purely by the group's `superdogs_enabled` flag — applies to both Season and World Cup modes, though World Cup spreads are typically too tight to qualify (spread must be >= 6.5)
+- Superdog availability is driven purely by the group's `superdogs_enabled` flag (spread must be >= 6.5)
 - `ODDS_CACHE_TTL_MINUTES` should be a configurable env variable (default 120) controlling when `GET /odds/available` triggers a background re-fetch
 
 ### Backend

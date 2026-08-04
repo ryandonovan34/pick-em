@@ -53,6 +53,7 @@ final class PickViewModelTests: XCTestCase {
             id: "g2", name: "No Dogs", adminID: "u1", joinCode: "NODGS1",
             sport: .nfl, mode: .season, seasonYear: 2025,
             blindPicks: false, superdogsEnabled: false, superdogsPerUser: 3,
+            includePreseason: false, includePlayoffs: true,
             createdAt: Date()
         )
         let vm = PickViewModel(

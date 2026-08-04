@@ -65,6 +65,8 @@ class GroupCreate(BaseModel):
     blind_picks: bool = True
     superdogs_enabled: bool = False
     superdogs_per_user: int = 3
+    include_preseason: bool = False
+    include_playoffs: bool = True
 
 
 class GroupRead(BaseModel):
@@ -78,6 +80,8 @@ class GroupRead(BaseModel):
     blind_picks: bool
     superdogs_enabled: bool
     superdogs_per_user: int
+    include_preseason: bool
+    include_playoffs: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}

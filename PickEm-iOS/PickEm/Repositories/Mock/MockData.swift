@@ -1,6 +1,10 @@
 import Foundation
 
 // Shared in-memory mock data used by all LocalMockRepository implementations.
+//
+// Mirrors the same season-progression narrative as pickem-api/scripts/seed_dev.py
+// (Weeks 1-8 fully played out, Week 9 current with a final/live/upcoming mix) so
+// MockLocal and MockBackend show equivalent-looking data.
 enum MockData {
     static let currentUserID  = "user-1"
     static let otherUserID    = "user-2"
@@ -44,301 +48,85 @@ enum MockData {
         blindPicks: false,
         superdogsEnabled: true,
         superdogsPerUser: 3,
+        includePreseason: false,
+        includePlayoffs: true,
         createdAt: Date(timeIntervalSinceNow: -86400 * 10)
     )
 
-    // Past week — all games finalized
-    static let nflWeek11 = Week(
-        id: "week-11",
-        groupID: "group-1",
-        weekNumber: 11,
-        label: "Week 11",
-        createdAt: Date(timeIntervalSinceNow: -86400 * 14)
-    )
+    // MARK: - Week 9 (current) — stable IDs (game-1..4) relied on by tests/previews
 
-    static let nflWeek11Games: [Game] = [
-        // Chiefs -7.5 vs Raiders: Chiefs win 28-10 (covered by 18)
-        Game(
-            id: "game-w11-1",
-            weekID: "week-11",
-            oddsAPIID: "odds-w11-1",
-            sport: .nfl,
-            homeTeam: "Kansas City Chiefs",
-            awayTeam: "Las Vegas Raiders",
-            spread: -7.5,
-            favoriteTeam: "Kansas City Chiefs",
-            kickoffAt: Date(timeIntervalSinceNow: -86400 * 7 - 3600 * 4),
-            homeScore: 28,
-            awayScore: 10,
-            resultPosted: true
-        ),
-        // 49ers -4.5 vs Cowboys: Cowboys win 24-17 (49ers didn't cover)
-        Game(
-            id: "game-w11-2",
-            weekID: "week-11",
-            oddsAPIID: "odds-w11-2",
-            sport: .nfl,
-            homeTeam: "San Francisco 49ers",
-            awayTeam: "Dallas Cowboys",
-            spread: -4.5,
-            favoriteTeam: "San Francisco 49ers",
-            kickoffAt: Date(timeIntervalSinceNow: -86400 * 7 - 3600 * 3),
-            homeScore: 17,
-            awayScore: 24,
-            resultPosted: true
-        ),
-        // Eagles -10.5 vs Giants: Eagles win 35-7 (covered by 28)
-        Game(
-            id: "game-w11-3",
-            weekID: "week-11",
-            oddsAPIID: "odds-w11-3",
-            sport: .nfl,
-            homeTeam: "Philadelphia Eagles",
-            awayTeam: "New York Giants",
-            spread: -10.5,
-            favoriteTeam: "Philadelphia Eagles",
-            kickoffAt: Date(timeIntervalSinceNow: -86400 * 7 - 3600),
-            homeScore: 35,
-            awayScore: 7,
-            resultPosted: true
-        ),
-        // Bills -6.5 vs Dolphins: Dolphins win outright 24-21 (superdog eligible, Dolphins won)
-        Game(
-            id: "game-w11-4",
-            weekID: "week-11",
-            oddsAPIID: "odds-w11-4",
-            sport: .nfl,
-            homeTeam: "Buffalo Bills",
-            awayTeam: "Miami Dolphins",
-            spread: -6.5,
-            favoriteTeam: "Buffalo Bills",
-            kickoffAt: Date(timeIntervalSinceNow: -86400 * 7),
-            homeScore: 21,
-            awayScore: 24,
-            resultPosted: true
+    private static func windowed(from games: [Game], id: String, groupID: String, weekNumber: Int, label: String, createdAt: Date) -> Week {
+        let kickoffs = games.map(\.kickoffAt)
+        let first = kickoffs.min()
+        let last = kickoffs.max()
+        var calendar = Calendar(identifier: .iso8601)
+        // Must be Eastern, not UTC or the system's local timezone — NFL games
+        // are scheduled in ET, and an 8+ PM ET kickoff (Sunday/Monday night
+        // football) is already the next day in UTC, which would otherwise
+        // push the ISO week boundary computed here out of sync with what
+        // weeklySlotKickoff actually generated. (The stored startsOn/endsOn
+        // are still fine to *display* via a UTC-timezone formatter afterward —
+        // ET midnight always falls within the same UTC calendar day.)
+        calendar.timeZone = eastern
+        let starts = first.flatMap { calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: $0)) }
+        // Only widen endsOn past the standard NFL week — Thursday through
+        // the FOLLOWING Monday (MNF), i.e. +7 days from a Monday-anchored
+        // starts_on, not +6 — when a game falls even after that (mirrors
+        // auto_slate.py's _week_window / games.py's _week_end fallback).
+        // Leaving it nil otherwise is what makes Week.displayLabel fall back
+        // to the real "Week N" label instead of rendering a raw date range.
+        // Compares CALENDAR DAYS (via startOfDay), not raw instants — an
+        // evening kickoff's exact instant is always numerically later than
+        // midnight of day 7 even when it's still calendar-day 7 in ET.
+        var ends: Date?
+        if let starts, let last,
+           let sevenDaysLater = calendar.date(byAdding: .day, value: 7, to: starts),
+           calendar.startOfDay(for: last) > sevenDaysLater {
+            ends = last
+        }
+        return Week(
+            id: id, groupID: groupID, weekNumber: weekNumber, label: label, createdAt: createdAt,
+            firstKickoffAt: first, lastKickoffAt: last, startsOn: starts, endsOn: ends
         )
-    ]
-
-    // Current week — mix of finalized and upcoming
-    static let nflWeek = Week(
-        id: "week-1",
-        groupID: "group-1",
-        weekNumber: 12,
-        label: "Week 12",
-        createdAt: Date(timeIntervalSinceNow: -86400 * 7)
-    )
+    }
 
     static let nflGames: [Game] = [
         Game(
-            id: "game-1",
-            weekID: "week-1",
-            oddsAPIID: "odds-1",
-            sport: .nfl,
-            homeTeam: "Kansas City Chiefs",
-            awayTeam: "Las Vegas Raiders",
-            spread: -7.5,
-            favoriteTeam: "Kansas City Chiefs",
+            id: "game-1", weekID: "week-9", oddsAPIID: "odds-1", sport: .nfl,
+            homeTeam: "Kansas City Chiefs", awayTeam: "Las Vegas Raiders",
+            spread: -7.5, favoriteTeam: "Kansas City Chiefs",
             kickoffAt: Date(timeIntervalSinceNow: 3600 * 48),
-            homeScore: nil,
-            awayScore: nil,
-            resultPosted: false
+            homeScore: nil, awayScore: nil, resultPosted: false
         ),
         Game(
-            id: "game-2",
-            weekID: "week-1",
-            oddsAPIID: "odds-2",
-            sport: .nfl,
-            homeTeam: "San Francisco 49ers",
-            awayTeam: "Dallas Cowboys",
-            spread: -3.5,
-            favoriteTeam: "San Francisco 49ers",
+            id: "game-2", weekID: "week-9", oddsAPIID: "odds-2", sport: .nfl,
+            homeTeam: "San Francisco 49ers", awayTeam: "Dallas Cowboys",
+            spread: -3.5, favoriteTeam: "San Francisco 49ers",
             kickoffAt: Date(timeIntervalSinceNow: 3600 * 50),
-            homeScore: nil,
-            awayScore: nil,
-            resultPosted: false
+            homeScore: nil, awayScore: nil, resultPosted: false
         ),
         Game(
-            id: "game-3",
-            weekID: "week-1",
-            oddsAPIID: "odds-3",
-            sport: .nfl,
-            homeTeam: "Philadelphia Eagles",
-            awayTeam: "New York Giants",
-            spread: -10.5,
-            favoriteTeam: "Philadelphia Eagles",
+            id: "game-3", weekID: "week-9", oddsAPIID: "odds-3", sport: .nfl,
+            homeTeam: "Philadelphia Eagles", awayTeam: "New York Giants",
+            spread: -10.5, favoriteTeam: "Philadelphia Eagles",
             kickoffAt: Date(timeIntervalSinceNow: 3600 * 52),
-            homeScore: nil,
-            awayScore: nil,
-            resultPosted: false
+            homeScore: nil, awayScore: nil, resultPosted: false
         ),
         Game(
-            id: "game-4",
-            weekID: "week-1",
-            oddsAPIID: "odds-4",
-            sport: .nfl,
-            homeTeam: "Buffalo Bills",
-            awayTeam: "Miami Dolphins",
-            spread: -4.5,
-            favoriteTeam: "Buffalo Bills",
+            id: "game-4", weekID: "week-9", oddsAPIID: "odds-4", sport: .nfl,
+            homeTeam: "Buffalo Bills", awayTeam: "Miami Dolphins",
+            spread: -4.5, favoriteTeam: "Buffalo Bills",
             kickoffAt: Date(timeIntervalSinceNow: -3600),
-            homeScore: 27,
-            awayScore: 14,
-            resultPosted: true
+            homeScore: 27, awayScore: 14, resultPosted: true
         )
     ]
 
-    // MARK: - World Cup Group
-
-    static let worldCupGroup = Group(
-        id: "group-2",
-        name: "World Cup 2026",
-        adminID: adminUserID,
-        joinCode: "WC2026",
-        sport: .worldCup,
-        mode: .worldCup,
-        seasonYear: 2026,
-        blindPicks: true,
-        superdogsEnabled: false,
-        superdogsPerUser: 0,
-        createdAt: Date(timeIntervalSinceNow: -86400 * 5)
+    static let nflWeek: Week = windowed(
+        from: nflGames, id: "week-9", groupID: "group-1", weekNumber: 9, label: "Week 9",
+        createdAt: Date(timeIntervalSinceNow: -86400 * 7)
     )
 
-    static let worldCupWeek = Week(
-        id: "week-2",
-        groupID: "group-2",
-        weekNumber: 1,
-        label: "Group Stage - Matchday 1",
-        createdAt: Date(timeIntervalSinceNow: -86400 * 5)
-    )
-
-    static let worldCupGames: [Game] = [
-        // France -1.5 vs Morocco: France win 2-0 (covered)
-        Game(
-            id: "game-5",
-            weekID: "week-2",
-            oddsAPIID: "odds-5",
-            sport: .worldCup,
-            homeTeam: "France",
-            awayTeam: "Morocco",
-            spread: -1.5,
-            favoriteTeam: "France",
-            kickoffAt: Date(timeIntervalSinceNow: -86400 * 3),
-            homeScore: 2,
-            awayScore: 0,
-            resultPosted: true
-        ),
-        // Brazil -1.5 vs Croatia: Brazil win 3-1 (covered)
-        Game(
-            id: "game-6",
-            weekID: "week-2",
-            oddsAPIID: "odds-6",
-            sport: .worldCup,
-            homeTeam: "Brazil",
-            awayTeam: "Croatia",
-            spread: -1.5,
-            favoriteTeam: "Brazil",
-            kickoffAt: Date(timeIntervalSinceNow: -86400),
-            homeScore: 3,
-            awayScore: 1,
-            resultPosted: true
-        ),
-        Game(
-            id: "game-7",
-            weekID: "week-2",
-            oddsAPIID: "odds-7",
-            sport: .worldCup,
-            homeTeam: "United States",
-            awayTeam: "Mexico",
-            spread: -0.5,
-            favoriteTeam: "United States",
-            kickoffAt: Date(timeIntervalSinceNow: 3600 * 48),
-            homeScore: nil,
-            awayScore: nil,
-            resultPosted: false
-        ),
-        Game(
-            id: "game-8",
-            weekID: "week-2",
-            oddsAPIID: "odds-8",
-            sport: .worldCup,
-            homeTeam: "Argentina",
-            awayTeam: "Germany",
-            spread: -1.5,
-            favoriteTeam: "Argentina",
-            kickoffAt: Date(timeIntervalSinceNow: 3600 * 96),
-            homeScore: nil,
-            awayScore: nil,
-            resultPosted: false
-        )
-    ]
-
-    // MARK: - Combined
-
-    static var group: Group { nflGroup }
-    static var week: Week { nflWeek }
-    static var games: [Game] { nflWeek11Games + nflGames + worldCupGames }
-
-    // MARK: - Picks
-    //
-    // NFL Week 11 results (Alice: 2W 1L 1SD, Bob: 2W 2L, Charlie: 1W 2L):
-    //   w11-1  KC Chiefs covered   → Alice WIN, Bob WIN,  Charlie LOSS
-    //   w11-2  Cowboys won outright → Alice LOSS, Bob WIN, Charlie WIN
-    //   w11-3  Eagles covered      → Alice WIN, Bob LOSS, Charlie LOSS
-    //   w11-4  Dolphins won outright (superdog eligible) → Alice SUPERDOG_WIN, Bob LOSS, Charlie LOSS
-    //
-    // NFL Week 12 partial (game-4 finalized, Bills -4.5 win 27-14, Bills covered):
-    //   Alice WIN, Bob LOSS, Charlie WIN
-    //
-    // World Cup Matchday 1 (game-5 France covered, game-6 Brazil covered):
-    //   game-5: Alice WIN, Bob LOSS, Charlie WIN
-    //   game-6: Alice WIN, Bob WIN,  Charlie LOSS
-    static let picks: [Pick] = [
-
-        // ── NFL Week 11 ──────────────────────────────────────────────────────
-
-        Pick(id: "pick-w11-1a", userID: currentUserID, gameID: "game-w11-1", groupID: "group-1",
-             pickedTeam: "Kansas City Chiefs", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-1b", userID: otherUserID, gameID: "game-w11-1", groupID: "group-1",
-             pickedTeam: "Kansas City Chiefs", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-1c", userID: thirdUserID, gameID: "game-w11-1", groupID: "group-1",
-             pickedTeam: "Las Vegas Raiders", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-
-        Pick(id: "pick-w11-2a", userID: currentUserID, gameID: "game-w11-2", groupID: "group-1",
-             pickedTeam: "San Francisco 49ers", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-2b", userID: otherUserID, gameID: "game-w11-2", groupID: "group-1",
-             pickedTeam: "Dallas Cowboys", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-2c", userID: thirdUserID, gameID: "game-w11-2", groupID: "group-1",
-             pickedTeam: "Dallas Cowboys", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-
-        Pick(id: "pick-w11-3a", userID: currentUserID, gameID: "game-w11-3", groupID: "group-1",
-             pickedTeam: "Philadelphia Eagles", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-3b", userID: otherUserID, gameID: "game-w11-3", groupID: "group-1",
-             pickedTeam: "New York Giants", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-3c", userID: thirdUserID, gameID: "game-w11-3", groupID: "group-1",
-             pickedTeam: "New York Giants", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-
-        // Alice superdogs the Dolphins (Bills -6.5, Dolphins won outright 24-21)
-        Pick(id: "pick-w11-4a", userID: currentUserID, gameID: "game-w11-4", groupID: "group-1",
-             pickedTeam: "Miami Dolphins", isSuperdog: true, result: .superdogWin,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-4b", userID: otherUserID, gameID: "game-w11-4", groupID: "group-1",
-             pickedTeam: "Buffalo Bills", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-        Pick(id: "pick-w11-4c", userID: thirdUserID, gameID: "game-w11-4", groupID: "group-1",
-             pickedTeam: "Buffalo Bills", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 8), updatedAt: Date(timeIntervalSinceNow: -86400 * 8)),
-
-        // ── NFL Week 12 (game-4 only finalized so far) ────────────────────────
-
+    private static let week9Picks: [Pick] = [
         // Alice picked KC Chiefs for the upcoming game-1
         Pick(id: "pick-1", userID: currentUserID, gameID: "game-1", groupID: "group-1",
              pickedTeam: "Kansas City Chiefs", isSuperdog: false, result: .pending,
@@ -353,69 +141,185 @@ enum MockData {
              createdAt: Date(timeIntervalSinceNow: -86400), updatedAt: Date(timeIntervalSinceNow: -86400)),
         Pick(id: "pick-3c", userID: thirdUserID, gameID: "game-4", groupID: "group-1",
              pickedTeam: "Buffalo Bills", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400), updatedAt: Date(timeIntervalSinceNow: -86400)),
-
-        // ── World Cup Matchday 1 ──────────────────────────────────────────────
-
-        // game-5 France -1.5 won 2-0 (covered)
-        Pick(id: "pick-4", userID: currentUserID, gameID: "game-5", groupID: "group-2",
-             pickedTeam: "France", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 3), updatedAt: Date(timeIntervalSinceNow: -86400 * 3)),
-        Pick(id: "pick-5", userID: otherUserID, gameID: "game-5", groupID: "group-2",
-             pickedTeam: "Morocco", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 3), updatedAt: Date(timeIntervalSinceNow: -86400 * 3)),
-        Pick(id: "pick-5c", userID: thirdUserID, gameID: "game-5", groupID: "group-2",
-             pickedTeam: "France", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 3), updatedAt: Date(timeIntervalSinceNow: -86400 * 3)),
-
-        // game-6 Brazil -1.5 won 3-1 (covered)
-        Pick(id: "pick-6a", userID: currentUserID, gameID: "game-6", groupID: "group-2",
-             pickedTeam: "Brazil", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 2), updatedAt: Date(timeIntervalSinceNow: -86400 * 2)),
-        Pick(id: "pick-6b", userID: otherUserID, gameID: "game-6", groupID: "group-2",
-             pickedTeam: "Brazil", isSuperdog: false, result: .win,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 2), updatedAt: Date(timeIntervalSinceNow: -86400 * 2)),
-        Pick(id: "pick-6c", userID: thirdUserID, gameID: "game-6", groupID: "group-2",
-             pickedTeam: "Croatia", isSuperdog: false, result: .loss,
-             createdAt: Date(timeIntervalSinceNow: -86400 * 2), updatedAt: Date(timeIntervalSinceNow: -86400 * 2)),
-
-        // Alice has picked US for the upcoming game-7
-        Pick(id: "pick-7", userID: currentUserID, gameID: "game-7", groupID: "group-2",
-             pickedTeam: "United States", isSuperdog: false, result: .pending,
-             createdAt: Date(timeIntervalSinceNow: -3600), updatedAt: Date(timeIntervalSinceNow: -3600))
+             createdAt: Date(timeIntervalSinceNow: -86400), updatedAt: Date(timeIntervalSinceNow: -86400))
     ]
 
-    // MARK: - Standings
-    //
-    // NFL (group-1): derived from all finalized picks above
-    //   Alice:   3W  1L  1SD  (superdog win = +3; effective 6W) → win%  6/7  ≈ 85.7%
-    //   Bob:     2W  3L  0SD                                    → win%  2/5  = 40.0%
-    //   Charlie: 2W  3L  0SD  (same record, Bob wins tiebreak by alpha-sort in UI)
-    //
-    // World Cup (group-2): derived from game-5 and game-6
-    //   Alice:   2W  0L → 100%
-    //   Bob:     1W  1L →  50%
-    //   Charlie: 1W  1L →  50% (Bob wins tiebreak via total wins, both equal here — display order is stable)
-    static let standings: [Standing] = [
-        // NFL standings
-        Standing(userID: currentUserID, groupID: "group-1", displayName: "Alice",
-                 wins: 3, losses: 1, superdogWins: 1, superdogsUsed: 1,
-                 updatedAt: Date(timeIntervalSinceNow: -3600)),
-        Standing(userID: otherUserID, groupID: "group-1", displayName: "Bob",
-                 wins: 2, losses: 3, superdogWins: 0, superdogsUsed: 0,
-                 updatedAt: Date(timeIntervalSinceNow: -3600)),
-        Standing(userID: thirdUserID, groupID: "group-1", displayName: "Charlie",
-                 wins: 2, losses: 3, superdogWins: 0, superdogsUsed: 0,
-                 updatedAt: Date(timeIntervalSinceNow: -3600)),
-        // World Cup standings
-        Standing(userID: currentUserID, groupID: "group-2", displayName: "Alice",
-                 wins: 2, losses: 0, superdogWins: 0, superdogsUsed: 0,
-                 updatedAt: Date(timeIntervalSinceNow: -86400)),
-        Standing(userID: otherUserID, groupID: "group-2", displayName: "Bob",
-                 wins: 1, losses: 1, superdogWins: 0, superdogsUsed: 0,
-                 updatedAt: Date(timeIntervalSinceNow: -86400)),
-        Standing(userID: thirdUserID, groupID: "group-2", displayName: "Charlie",
-                 wins: 1, losses: 1, superdogWins: 0, superdogsUsed: 0,
-                 updatedAt: Date(timeIntervalSinceNow: -86400))
+    // MARK: - Week 10 (upcoming) — games exist, nobody has picked yet
+
+    static let nflWeek13Games: [Game] = [
+        Game(id: "game-w13-1", weekID: "week-10", oddsAPIID: "odds-w13-1", sport: .nfl,
+             homeTeam: "Cincinnati Bengals", awayTeam: "Pittsburgh Steelers", spread: -3.5, favoriteTeam: "Cincinnati Bengals",
+             kickoffAt: Date(timeIntervalSinceNow: 86400 * 4),
+             homeScore: nil, awayScore: nil, resultPosted: false),
+        Game(id: "game-w13-2", weekID: "week-10", oddsAPIID: "odds-w13-2", sport: .nfl,
+             homeTeam: "Detroit Lions", awayTeam: "Chicago Bears", spread: -6.5, favoriteTeam: "Detroit Lions",
+             kickoffAt: Date(timeIntervalSinceNow: 86400 * 5),
+             homeScore: nil, awayScore: nil, resultPosted: false)
     ]
+
+    static let nflWeek13: Week = windowed(
+        from: nflWeek13Games, id: "week-10", groupID: "group-1", weekNumber: 10, label: "Week 10",
+        createdAt: Date(timeIntervalSinceNow: -3600 * 2)
+    )
+
+    // MARK: - Weeks 1-8 (history) — deterministically generated so standings/dates
+    // stay internally consistent without hand-authoring ~150 literals. One
+    // eligible game gets a superdog pick so that state has a visible example too.
+
+    private struct MatchupTemplate {
+        let home: String, away: String, spread: Double
+    }
+
+    // Realistic NFL weekly time slots (mirrors pickem-api's
+    // nfl_calendar.weekly_slot_kickoff): Thursday Night Football, Sunday's
+    // early/late windows, and an alternating SNF/MNF closer.
+    private static let eastern = TimeZone(identifier: "America/New_York")!
+
+    private static func thursdayComponents(of date: Date) -> DateComponents {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        let weekday = utc.component(.weekday, from: date) // 1=Sun...7=Sat
+        let mondayBased = (weekday + 5) % 7 // Mon=0...Sun=6
+        let daysSinceThursday = (mondayBased - 3 + 7) % 7
+        let thursday = utc.date(byAdding: .day, value: -daysSinceThursday, to: date)!
+        return utc.dateComponents([.year, .month, .day], from: thursday)
+    }
+
+    private static func etKickoff(_ thursday: DateComponents, dayOffset: Int, hour: Int, minute: Int) -> Date {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        let baseDay = utc.date(from: thursday)!
+        let targetDay = utc.date(byAdding: .day, value: dayOffset, to: baseDay)!
+        let ymd = utc.dateComponents([.year, .month, .day], from: targetDay)
+
+        var etCalendar = Calendar(identifier: .gregorian)
+        etCalendar.timeZone = eastern
+        var comps = DateComponents()
+        comps.year = ymd.year; comps.month = ymd.month; comps.day = ymd.day
+        comps.hour = hour; comps.minute = minute; comps.timeZone = eastern
+        return etCalendar.date(from: comps)!
+    }
+
+    private static func weeklySlotKickoff(anchor: Date, slotIndex: Int, slotCount: Int, weekNumber: Int) -> Date {
+        let thursday = thursdayComponents(of: anchor)
+        if slotIndex == 0 {
+            return etKickoff(thursday, dayOffset: 0, hour: 20, minute: 15) // Thursday Night Football
+        }
+        if slotCount >= 2 && slotIndex == slotCount - 1 {
+            return weekNumber % 2 == 0
+                ? etKickoff(thursday, dayOffset: 4, hour: 20, minute: 15)  // Monday Night Football
+                : etKickoff(thursday, dayOffset: 3, hour: 20, minute: 20)  // Sunday Night Football
+        }
+        if slotCount >= 3 && slotIndex == slotCount - 2 {
+            return etKickoff(thursday, dayOffset: 3, hour: 16, minute: 25) // Sunday late window
+        }
+        return etKickoff(thursday, dayOffset: 3, hour: 13, minute: 0)      // Sunday early window
+    }
+
+    private static let historyTemplates: [MatchupTemplate] = [
+        .init(home: "Kansas City Chiefs", away: "Las Vegas Raiders", spread: -7.5),
+        .init(home: "Buffalo Bills", away: "Miami Dolphins", spread: -6.5),
+        .init(home: "San Francisco 49ers", away: "Dallas Cowboys", spread: -4.5),
+        .init(home: "Philadelphia Eagles", away: "New York Giants", spread: -10.5),
+        .init(home: "Baltimore Ravens", away: "Cleveland Browns", spread: -9.5),
+        .init(home: "Green Bay Packers", away: "Minnesota Vikings", spread: -2.5),
+        .init(home: "Seattle Seahawks", away: "Los Angeles Chargers", spread: -1.5),
+        .init(home: "Tampa Bay Buccaneers", away: "New Orleans Saints", spread: -3.5),
+    ]
+
+    private static func buildHistory() -> (weeks: [Week], games: [Game], picks: [Pick]) {
+        var weeks: [Week] = []
+        var games: [Game] = []
+        var picks: [Pick] = []
+        var superdogAssigned = false
+
+        for weekNumber in 1...8 {
+            let weeksAgo = 9 - weekNumber
+            let weekBase = Date(timeIntervalSinceNow: -Double(weeksAgo) * 7 * 86400)
+            let offset = (weekNumber - 1) * 2
+            var weekGames: [Game] = []
+
+            for i in 0..<4 {
+                let template = historyTemplates[(offset + i) % historyTemplates.count]
+                let gameID = "w\(weekNumber)-g\(i + 1)"
+                let kickoff = weeklySlotKickoff(anchor: weekBase, slotIndex: i, slotCount: 4, weekNumber: weekNumber)
+                // Deterministic outcome: favorite covers ~2 of every 3 games.
+                let favoriteCovers = (weekNumber + i) % 3 != 0
+                let margin = Int(abs(template.spread))
+                let (home, away): (Int, Int) = favoriteCovers
+                    ? (17 + margin + 4, 17)
+                    : (17 + max(1, margin - 3), 17 + margin + 2) // favorite wins outright but underdog covers, or underdog wins
+
+                let game = Game(
+                    id: gameID, weekID: "week-h\(weekNumber)", oddsAPIID: "odds-\(gameID)", sport: .nfl,
+                    homeTeam: template.home, awayTeam: template.away,
+                    spread: template.spread, favoriteTeam: template.home,
+                    kickoffAt: kickoff, homeScore: home, awayScore: away, resultPosted: true
+                )
+                weekGames.append(game)
+                games.append(game)
+
+                let underdogWonOutright = away > home
+                let eligibleForSuperdog = !superdogAssigned && abs(template.spread) >= 6.5
+
+                for (userID, favors) in [(currentUserID, true), (otherUserID, (weekNumber + i) % 2 == 0), (thirdUserID, (weekNumber + i) % 3 != 1)] {
+                    let isSuperdog = eligibleForSuperdog && userID == currentUserID
+                    if isSuperdog { superdogAssigned = true }
+
+                    let pickedTeam = isSuperdog ? template.away : (favors ? template.home : template.away)
+                    let result: PickResult
+                    if isSuperdog {
+                        result = underdogWonOutright ? .superdogWin : .loss
+                    } else if pickedTeam == template.home {
+                        result = favoriteCovers ? .win : .loss
+                    } else {
+                        result = favoriteCovers ? .loss : .win
+                    }
+
+                    picks.append(Pick(
+                        id: "pick-\(gameID)-\(userID)", userID: userID, gameID: gameID, groupID: "group-1",
+                        pickedTeam: pickedTeam, isSuperdog: isSuperdog, result: result,
+                        createdAt: kickoff.addingTimeInterval(-3600), updatedAt: kickoff.addingTimeInterval(-3600)
+                    ))
+                }
+            }
+
+            weeks.append(windowed(
+                from: weekGames, id: "week-h\(weekNumber)", groupID: "group-1",
+                weekNumber: weekNumber, label: "Week \(weekNumber)",
+                createdAt: weekBase.addingTimeInterval(-86400)
+            ))
+        }
+
+        return (weeks, games, picks)
+    }
+
+    private static let history = buildHistory()
+
+    // MARK: - Combined
+
+    static var group: Group { nflGroup }
+    static var week: Week { nflWeek }
+    static var allWeeks: [Week] { [nflWeek] + history.weeks + [nflWeek13] }
+    static var games: [Game] { nflGames + history.games + nflWeek13Games }
+    static var picks: [Pick] { week9Picks + history.picks }
+
+    // MARK: - Standings — tallied from `picks` so they can never drift out of sync.
+
+    static var standings: [Standing] {
+        let users: [(id: String, name: String)] = [
+            (currentUserID, "Alice"), (otherUserID, "Bob"), (thirdUserID, "Charlie"),
+        ]
+        return users.map { user in
+            let userPicks = picks.filter { $0.userID == user.id && $0.groupID == "group-1" }
+            let wins = userPicks.filter { $0.result == .win }.count
+            let losses = userPicks.filter { $0.result == .loss }.count
+            let superdogWins = userPicks.filter { $0.result == .superdogWin }.count
+            return Standing(
+                userID: user.id, groupID: "group-1", displayName: user.name,
+                wins: wins, losses: losses, superdogWins: superdogWins, superdogsUsed: superdogWins,
+                updatedAt: Date(timeIntervalSinceNow: -3600)
+            )
+        }
+    }
 }

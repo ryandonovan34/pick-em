@@ -24,6 +24,7 @@ class PickRead(BaseModel):
     picked_team: str
     is_superdog: bool
     result: str
+    is_forfeit: bool
     created_at: datetime
     updated_at: datetime
 

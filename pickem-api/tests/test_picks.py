@@ -39,7 +39,13 @@ def _seed_group_and_game(
     assert group_resp.status_code == 201
     group = group_resp.json()
 
-    week_resp = client.post(f"/groups/{group['id']}/weeks", headers=headers, json={"label": "Week 1"})
+    # starts_on must cover the mock game's kickoff (now + kickoff_offset_hours);
+    # WeekCreate snaps any date to the Monday of its containing week.
+    game_date = (datetime.now(timezone.utc) + timedelta(hours=kickoff_offset_hours)).date().isoformat()
+    week_resp = client.post(
+        f"/groups/{group['id']}/weeks", headers=headers,
+        json={"label": "Week 1", "starts_on": game_date},
+    )
     assert week_resp.status_code == 201
     week = week_resp.json()
 
@@ -142,7 +148,11 @@ class TestPickVisibility:
         })
         group = group_resp.json()
 
-        week_resp = client.post(f"/groups/{group['id']}/weeks", headers=headers_a, json={"label": "W1"})
+        game_date = (datetime.now(timezone.utc) + timedelta(hours=48)).date().isoformat()
+        week_resp = client.post(
+            f"/groups/{group['id']}/weeks", headers=headers_a,
+            json={"label": "W1", "starts_on": game_date},
+        )
         week = week_resp.json()
 
         seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})
@@ -176,7 +186,11 @@ class TestPickVisibility:
             "blind_picks": False, "superdogs_enabled": False, "superdogs_per_user": 3,
         })
         group = group_resp.json()
-        week_resp = client.post(f"/groups/{group['id']}/weeks", headers=headers_a, json={"label": "W1"})
+        game_date = (datetime.now(timezone.utc) + timedelta(hours=48)).date().isoformat()
+        week_resp = client.post(
+            f"/groups/{group['id']}/weeks", headers=headers_a,
+            json={"label": "W1", "starts_on": game_date},
+        )
         week = week_resp.json()
 
         seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})

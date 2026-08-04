@@ -72,6 +72,26 @@ def send_pick_reminder(fcm_token: str, team_names: str, minutes_until_kickoff: i
     })
 
 
+def send_slate_ready(fcm_tokens: list[str], group_name: str, week_label: str) -> None:
+    for token in fcm_tokens:
+        _send(token, {
+            "notification": {
+                "title": f"{group_name} — picks are open",
+                "body": f"Games have been added to {week_label}. Go make your picks!",
+            },
+        })
+
+
+def send_game_added(fcm_tokens: list[str], group_name: str, week_label: str, away_team: str, home_team: str) -> None:
+    for token in fcm_tokens:
+        _send(token, {
+            "notification": {
+                "title": f"{group_name} — new game added",
+                "body": f"{away_team} at {home_team} has been added to {week_label}.",
+            },
+        })
+
+
 def send_slate_reminder_to_admin(fcm_token: str, group_name: str) -> None:
     _send(fcm_token, {
         "notification": {

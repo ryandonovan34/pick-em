@@ -21,7 +21,7 @@ struct TeamInfo {
     }
 
     static func from(_ fullName: String) -> TeamInfo {
-        nfl[fullName] ?? worldCup[fullName] ?? fallback(for: fullName)
+        nfl[fullName] ?? fallback(for: fullName)
     }
 
     private static func fallback(for fullName: String) -> TeamInfo {
@@ -57,43 +57,6 @@ struct TeamIcon: View {
                     .lineLimit(1)
             )
     }
-}
-
-// MARK: - World Cup Lookup
-private extension TeamInfo {
-    // swiftlint:disable opening_brace
-    static let worldCup: [String: TeamInfo] = [
-        "Argentina":      TeamInfo(city: "",            mascot: "Argentina",   acronym: "ARG", colorHex: "74ACDF"),
-        "Australia":      TeamInfo(city: "",            mascot: "Australia",   acronym: "AUS", colorHex: "00843D"),
-        "Belgium":        TeamInfo(city: "",            mascot: "Belgium",     acronym: "BEL", colorHex: "ED2939"),
-        "Brazil":         TeamInfo(city: "",            mascot: "Brazil",      acronym: "BRA", colorHex: "009C3B"),
-        "Canada":         TeamInfo(city: "",            mascot: "Canada",      acronym: "CAN", colorHex: "FF0000"),
-        "Croatia":        TeamInfo(city: "",            mascot: "Croatia",     acronym: "CRO", colorHex: "FF0000"),
-        "Denmark":        TeamInfo(city: "",            mascot: "Denmark",     acronym: "DEN", colorHex: "C60C30"),
-        "Ecuador":        TeamInfo(city: "",            mascot: "Ecuador",     acronym: "ECU", colorHex: "FFD100"),
-        "England":        TeamInfo(city: "",            mascot: "England",     acronym: "ENG", colorHex: "003099"),
-        "France":         TeamInfo(city: "",            mascot: "France",      acronym: "FRA", colorHex: "002395"),
-        "Germany":        TeamInfo(city: "",            mascot: "Germany",     acronym: "GER", colorHex: "000000"),
-        "Ghana":          TeamInfo(city: "",            mascot: "Ghana",       acronym: "GHA", colorHex: "006B3F"),
-        "Iran":           TeamInfo(city: "",            mascot: "Iran",        acronym: "IRN", colorHex: "239F40"),
-        "Japan":          TeamInfo(city: "",            mascot: "Japan",       acronym: "JPN", colorHex: "BC002D"),
-        "Mexico":         TeamInfo(city: "",            mascot: "Mexico",      acronym: "MEX", colorHex: "006847"),
-        "Morocco":        TeamInfo(city: "",            mascot: "Morocco",     acronym: "MAR", colorHex: "C1272D"),
-        "Netherlands":    TeamInfo(city: "",            mascot: "Netherlands", acronym: "NED", colorHex: "FF4F00"),
-        "Poland":         TeamInfo(city: "",            mascot: "Poland",      acronym: "POL", colorHex: "DC143C"),
-        "Portugal":       TeamInfo(city: "",            mascot: "Portugal",    acronym: "POR", colorHex: "006600"),
-        "Saudi Arabia":   TeamInfo(city: "",            mascot: "Saudi Arabia",acronym: "KSA", colorHex: "006C35"),
-        "Senegal":        TeamInfo(city: "",            mascot: "Senegal",     acronym: "SEN", colorHex: "00853F"),
-        "Serbia":         TeamInfo(city: "",            mascot: "Serbia",      acronym: "SRB", colorHex: "C6363C"),
-        "South Korea":    TeamInfo(city: "",            mascot: "South Korea", acronym: "KOR", colorHex: "CD2E3A"),
-        "Spain":          TeamInfo(city: "",            mascot: "Spain",       acronym: "ESP", colorHex: "AA151B"),
-        "Switzerland":    TeamInfo(city: "",            mascot: "Switzerland", acronym: "SUI", colorHex: "FF0000"),
-        "Tunisia":        TeamInfo(city: "",            mascot: "Tunisia",     acronym: "TUN", colorHex: "E70013"),
-        "United States":  TeamInfo(city: "",            mascot: "United States",acronym: "USA",colorHex: "0A3161"),
-        "Uruguay":        TeamInfo(city: "",            mascot: "Uruguay",     acronym: "URU", colorHex: "5AAAFF"),
-        "Wales":          TeamInfo(city: "",            mascot: "Wales",       acronym: "WAL", colorHex: "C8102E"),
-    ]
-    // swiftlint:enable opening_brace
 }
 
 // MARK: - NFL Lookup

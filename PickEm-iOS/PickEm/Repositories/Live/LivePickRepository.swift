@@ -12,6 +12,11 @@ final class LivePickRepository: PickRepositoryProtocol {
         return dtos.map { $0.toDomain() }
     }
 
+    func fetchAllPicks(groupID: String) async throws -> [Pick] {
+        let dtos: [PickDTO] = try await network.get("/groups/\(groupID)/picks")
+        return dtos.map { $0.toDomain() }
+    }
+
     func submitPick(gameID: String, groupID: String, pickedTeam: String, isSuperdog: Bool) async throws -> Pick {
         struct SubmitPickBody: Encodable {
             let game_id: String; let group_id: String

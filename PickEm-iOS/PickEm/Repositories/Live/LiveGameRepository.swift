@@ -27,11 +27,10 @@ final class LiveGameRepository: GameRepositoryProtocol {
         return games
     }
 
-    func fetchAvailableOdds(sport: Sport, groupID: String?) async throws -> [Game] {
+    func fetchAvailableOdds(sport: Sport, groupID: String?, weekID: String?) async throws -> [Game] {
         var path = "/odds/available?sport=\(sport.rawValue)"
-        if let groupID {
-            path += "&group_id=\(groupID)"
-        }
+        if let groupID { path += "&group_id=\(groupID)" }
+        if let weekID { path += "&week_id=\(weekID)" }
         let dtos: [GameDTO] = try await network.get(path)
         return dtos.map { $0.toDomain() }
     }
@@ -42,9 +41,21 @@ final class LiveGameRepository: GameRepositoryProtocol {
         return dtos.map { $0.toDomain() }
     }
 
-    func createWeek(groupID: String, label: String) async throws -> Week {
-        struct CreateWeekBody: Encodable { let label: String }
-        let dto: WeekDTO = try await network.post("/groups/\(groupID)/weeks", body: CreateWeekBody(label: label))
+    func createWeek(groupID: String, label: String, startsOn: Date, endsOn: Date?) async throws -> Week {
+        struct CreateWeekBody: Encodable {
+            let label: String
+            let starts_on: String
+            let ends_on: String?
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        let body = CreateWeekBody(
+            label: label,
+            starts_on: formatter.string(from: startsOn),
+            ends_on: endsOn.map { formatter.string(from: $0) }
+        )
+        let dto: WeekDTO = try await network.post("/groups/\(groupID)/weeks", body: body)
         return dto.toDomain()
     }
 

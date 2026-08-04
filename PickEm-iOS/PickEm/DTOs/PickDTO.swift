@@ -8,6 +8,7 @@ struct PickDTO: Codable {
     let pickedTeam: String
     let isSuperdog: Bool
     let result: String
+    let isForfeit: Bool
     let createdAt: Date
     let updatedAt: Date
 
@@ -18,6 +19,7 @@ struct PickDTO: Codable {
         case groupID = "group_id"
         case pickedTeam = "picked_team"
         case isSuperdog = "is_superdog"
+        case isForfeit = "is_forfeit"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -31,6 +33,7 @@ struct PickDTO: Codable {
             pickedTeam: pickedTeam,
             isSuperdog: isSuperdog,
             result: PickResult(rawValue: result) ?? .pending,
+            isForfeit: isForfeit,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

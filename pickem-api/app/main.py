@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="PickEm API",
-    description="Pick'em challenge app — NFL and World Cup 2026.",
+    description="Pick'em challenge app for the NFL.",
     version="0.1.0",
     # Disable the auto-generated docs in production to reduce attack surface.
     docs_url="/docs" if settings.is_development else None,

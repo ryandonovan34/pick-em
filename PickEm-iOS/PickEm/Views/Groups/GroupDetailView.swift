@@ -34,11 +34,18 @@ struct GroupDetailView: View {
 
             TabView {
                 SlateView(slateViewModel: slateViewModel, pickViewModel: pickViewModel)
-                    .tabItem { Label("Picks", systemImage: "checkmark.seal") }
+                    .tabItem { Label("Weeks", systemImage: "calendar") }
 
                 StandingsView(viewModel: standingsViewModel, currentUserID: pickViewModel.currentUserID)
                     .tabItem { Label("Standings", systemImage: "trophy") }
             }
+        }
+        .navigationDestination(for: Week.self) { week in
+            WeekDetailView(
+                weekID: week.id,
+                slateViewModel: slateViewModel,
+                pickViewModel: pickViewModel
+            )
         }
         .navigationTitle(group.name.uppercased())
         .navigationBarTitleDisplayMode(.inline)
@@ -63,9 +70,7 @@ struct GroupDetailView: View {
 
     private func initialLoad() async {
         await slateViewModel.loadWeeks()
-        if let week = slateViewModel.selectedWeek {
-            await pickViewModel.loadPicks(weekID: week.id)
-        }
+        await pickViewModel.loadAllPicks(groupID: group.id)
         await standingsViewModel.loadStandings()
     }
 }

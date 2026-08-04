@@ -1,7 +1,7 @@
 import Foundation
 
 final class MockGameRepository: GameRepositoryProtocol {
-    private var weeks: [Week] = [MockData.nflWeek11, MockData.nflWeek, MockData.worldCupWeek]
+    private var weeks: [Week] = MockData.allWeeks
     private var games: [Game] = MockData.games
 
     func fetchWeeks(groupID: String) async throws -> [Week] {
@@ -12,7 +12,7 @@ final class MockGameRepository: GameRepositoryProtocol {
         games.filter { $0.weekID == weekID }
     }
 
-    func fetchAvailableOdds(sport: Sport, groupID: String?) async throws -> [Game] {
+    func fetchAvailableOdds(sport: Sport, groupID: String?, weekID: String?) async throws -> [Game] {
         games.filter { $0.sport == sport }
     }
 
@@ -20,13 +20,15 @@ final class MockGameRepository: GameRepositoryProtocol {
         weeks.filter { $0.groupID == groupID }
     }
 
-    func createWeek(groupID: String, label: String) async throws -> Week {
+    func createWeek(groupID: String, label: String, startsOn: Date, endsOn: Date?) async throws -> Week {
         let week = Week(
             id: UUID().uuidString,
             groupID: groupID,
             weekNumber: (weeks.map(\.weekNumber).max() ?? 0) + 1,
             label: label,
-            createdAt: Date()
+            createdAt: Date(),
+            startsOn: startsOn,
+            endsOn: endsOn
         )
         weeks.append(week)
         return week

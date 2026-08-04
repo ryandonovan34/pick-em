@@ -181,6 +181,23 @@ def update_pick(
     return pick
 
 
+@group_picks_router.get("/groups/{group_id}/picks", response_model=list[PickRead])
+def get_all_picks(
+    group_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[Pick]:
+    """Return the current user's own picks for all weeks in a group."""
+    _require_member(group_id, current_user, session)
+    picks = session.exec(
+        select(Pick).where(
+            Pick.group_id == group_id,
+            Pick.user_id == current_user.id,
+        )
+    ).all()
+    return list(picks)
+
+
 @group_picks_router.get("/groups/{group_id}/weeks/{week_id}/picks", response_model=list[PickRead])
 def get_picks(
     group_id: uuid.UUID,

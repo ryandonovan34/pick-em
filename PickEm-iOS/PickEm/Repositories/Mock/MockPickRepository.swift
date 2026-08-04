@@ -7,6 +7,10 @@ final class MockPickRepository: PickRepositoryProtocol {
         picks.filter { $0.groupID == groupID }
     }
 
+    func fetchAllPicks(groupID: String) async throws -> [Pick] {
+        picks.filter { $0.groupID == groupID && $0.userID == MockData.currentUserID }
+    }
+
     func submitPick(gameID: String, groupID: String, pickedTeam: String, isSuperdog: Bool) async throws -> Pick {
         if picks.contains(where: { $0.gameID == gameID && $0.groupID == groupID && $0.userID == MockData.currentUserID }) {
             throw RepositoryError.conflict("Pick already exists for this game. Use updatePick to change it.")

@@ -25,7 +25,7 @@ class Game(SQLModel, table=True):
     # The Odds API's own ID for this game — used to de-duplicate on re-fetch
     # and to look up a game when the admin picks it from the available list.
     odds_api_id: Optional[str] = Field(default=None, unique=True, max_length=100)
-    # Odds API sport key: 'americanfootball_nfl' | 'soccer_fifa_world_cup'
+    # Odds API sport key, e.g. 'americanfootball_nfl'
     sport: str = Field(max_length=50)
     home_team: str = Field(max_length=100)
     away_team: str = Field(max_length=100)

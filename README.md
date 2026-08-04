@@ -1,6 +1,6 @@
 # PickEm
 
-A full-stack sports pick'em challenge app. Users join groups, pick games against the spread each week, and compete on a season-long leaderboard. Supports NFL and FIFA World Cup 2026.
+A full-stack NFL pick'em challenge app. Users join groups, pick games against the spread each week, and compete on a season-long leaderboard.
 
 ---
 
@@ -15,10 +15,9 @@ A full-stack sports pick'em challenge app. Users join groups, pick games against
 
 ## Features
 
-### Challenge Modes
+### Challenge Mode
 
 - **Season Mode** — Full NFL season including playoffs and the Super Bowl. Records accumulate across the entire season.
-- **World Cup Mode** — All 2026 FIFA World Cup games: group stage (all matchdays), Round of 32, Round of 16, Quarterfinals, Semifinals, and the Final.
 
 ### Groups
 
@@ -29,6 +28,7 @@ A full-stack sports pick'em challenge app. Users join groups, pick games against
   - Sport and challenge mode
   - **Blind picks** — when enabled, other members' picks are hidden until that game's kickoff. Enforced server-side.
   - **Superdogs** — an optional feature the admin can enable (see below).
+  - **Preseason / playoffs** — the admin chooses whether auto-populated weeks include the preseason and/or the playoffs. Weeks map directly onto the real NFL season structure (Preseason → Week 1-18 → Wild Card/Divisional/Conference Championships/Super Bowl); the admin can still manually add a week outside these settings regardless.
 
 ### Picks & Scoring
 
@@ -112,7 +112,7 @@ PostgreSQL. Key tables:
 |-------|-------------|
 | `users` | Accounts; stores FCM token (updated on each app launch) |
 | `refresh_tokens` | Hashed long-lived tokens for JWT refresh |
-| `groups` | Challenge configuration (sport, mode, blind_picks, superdogs) |
+| `groups` | Challenge configuration (blind_picks, superdogs) |
 | `group_members` | Group membership join table |
 | `weeks` | Time-boxed pick slates; belong to a group |
 | `games` | Games sourced from the Odds API; cached with rounded spread and `odds_api_id` for dedup. `week_id=NULL` means the game is in the odds pool, not yet on a slate |
@@ -206,16 +206,16 @@ Triggered by `POST /dev/mock-results` in development, or by the Odds API results
 
 ## Mock Backend Test Accounts
 
-Run `pickem-api/scripts/seed_dev.sh` to wipe and reseed the development database with a consistent dataset. All accounts use password `password123`.
+Run `pickem-api/scripts/seed_dev.py` to wipe and reseed the development database with a consistent dataset. All accounts use password `password123`.
 
 | Email | Name | Role |
 |-------|------|------|
-| `alice@test.com` | Alice | Admin of both groups |
+| `alice@test.com` | Alice | Admin |
 | `bob@test.com` | Bob | Member |
 | `charlie@test.com` | Charlie | Member |
 | `diana@test.com` | Diana | Member |
 
-Two groups are created — **Sunday Crew** (NFL, superdogs on) and **World Cup 2026** — each with a completed past week and a current week containing final, live, and upcoming games. See [`pickem-api/README.md`](pickem-api/README.md#seeding-mock-data-phase-2) for full details including expected standings.
+One group is created — **Sunday Crew** (superdogs on) — simulating Week 9 of the season, with Weeks 1-8 fully played out and Week 9 containing a final, a live, and two upcoming games. See [`pickem-api/README.md`](pickem-api/README.md#seeding-mock-data-phase-2) for full details including expected standings.
 
 ---
 

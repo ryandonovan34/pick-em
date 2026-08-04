@@ -10,7 +10,7 @@ final class LiveStandingsRepository: StandingsRepositoryProtocol {
     }
 
     func fetchStandings(groupID: String) async throws -> [Standing] {
-        if let cached = await MainActor.run(body: { cache.loadStandings(groupID: groupID) }) {
+        if let cached = await MainActor.run(body: { cache.loadStandings(groupID: groupID) }), !cached.isEmpty {
             return cached
         }
         let dtos: [StandingDTO] = try await network.get("/groups/\(groupID)/standings")

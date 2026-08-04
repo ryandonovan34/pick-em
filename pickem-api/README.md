@@ -1,7 +1,7 @@
 # PickEm API
 
-FastAPI backend for the PickEm sports pick'em challenge app.  
-Supports NFL season picks and FIFA World Cup 2026 picks against the spread.
+FastAPI backend for the PickEm NFL pick'em challenge app.  
+Supports NFL season picks against the spread.
 
 ---
 
@@ -109,27 +109,26 @@ The `/dev/*` endpoints let you drive the full app without the Odds API.
 
 ### Full dev seed script
 
-`scripts/seed_dev.sh` wipes the database and builds a complete realistic dataset in one shot. Run it any time you want a clean, known state.
+`scripts/seed_dev.py` wipes the database and simulates being partway through the NFL season in one shot: Weeks 1-8 are fully played out (deterministic scores + every user's picks — reproducible run to run via a fixed random seed), and Week 9 (the "current" week) is left in a mixed final/live/upcoming state for day-to-day demoing. Run it any time you want a clean, known state.
+
+Talks to Postgres directly via `psycopg2` (no `psql` binary required) and to the running dev API via `httpx` — both are already in `requirements.txt`.
 
 ```bash
 # From the pickem-api directory, with the server running:
-./scripts/seed_dev.sh
+python scripts/seed_dev.py
 
 # Override defaults if needed:
-DATABASE_URL=postgresql://localhost/pickem API_BASE_URL=http://localhost:8000 ./scripts/seed_dev.sh
+DATABASE_URL=postgresql://localhost/pickem API_BASE_URL=http://localhost:8000 python scripts/seed_dev.py
 ```
 
 **What it creates:**
 
-| | NFL — Sunday Crew | World Cup 2026 |
-|---|---|---|
-| **Members** | Alice (admin), Bob, Charlie, Diana | same 4 |
-| **Settings** | blind_picks off, superdogs on (3/user) | blind_picks on, superdogs off |
-| **Past week** | Week 11 — 4 games, all final | Matchday 1 — 4 games, all final |
-| **Current week** | Week 12 | Matchday 2 |
-| ↳ Final | Ravens 27-10 Browns | Germany 2-0 Japan |
-| ↳ Live | Bengals vs Steelers (kicked off) | Spain vs Costa Rica (kicked off) |
-| ↳ Upcoming | Lions vs Bears · Packers vs Vikings | Portugal vs Ghana · England vs Iran |
+| | NFL — Sunday Crew |
+|---|---|
+| **Members** | Alice (admin), Bob, Charlie, Diana |
+| **Settings** | blind_picks off, superdogs on (3/user), preseason excluded, playoffs included |
+| **Weeks 1-8** | Fully played out — 4 games each, all final, every member picked every game |
+| **Week 9 (current)** | Ravens final (27-10) · Bengals/Steelers live (kicked off, no result) · Lions/Bears and Packers/Vikings upcoming |
 
 **Test accounts** (password: `password123`):
 
@@ -140,25 +139,14 @@ DATABASE_URL=postgresql://localhost/pickem API_BASE_URL=http://localhost:8000 ./
 | `charlie@test.com` | Charlie |
 | `diana@test.com` | Diana |
 
-**Expected standings after seed:**
+**Expected standings after seed** (through Week 8 — Week 9's only posted result, Ravens, is reflected too):
 
-NFL Sunday Crew:
 ```
-1. Alice    3W-1L  1SD   85.7%
-2. Charlie  4W-1L        80.0%
-3. Diana    3W-2L        60.0%
-4. Bob      2W-3L        40.0%
+Diana       20-13   60.6%
+Bob         19-14   57.6%
+Charlie     18-15   54.5%
+Alice       16-17   48.5%
 ```
-
-World Cup 2026:
-```
-1. Alice    4W-1L        80.0%
-2. Diana    4W-1L        80.0%
-3. Bob      3W-2L        60.0%
-4. Charlie  2W-3L        40.0%
-```
-
-> The script requires `psql` to be on your PATH (used to set "live" game kickoff times and to wipe the DB). It uses `DATABASE_URL` with the same default as the server.
 
 ### Individual dev endpoints
 
@@ -168,10 +156,12 @@ curl -X POST http://localhost:8000/dev/mock-games \
   -H "Content-Type: application/json" \
   -d '{"sport": "americanfootball_nfl", "week_label": "Week 12", "game_count": 4}'
 
-# Create a week and populate it in one shot
+# Create/reuse a week (by NFL week number) and populate it in one shot.
+# week_label and week_number are both optional — omit week_label to auto-derive
+# it (e.g. "Week 9", "Preseason", "Wild Card") from week_number.
 curl -X POST http://localhost:8000/dev/seed-week \
   -H "Content-Type: application/json" \
-  -d '{"group_id": "GROUP_ID", "sport": "americanfootball_nfl", "week_label": "Week 12", "game_count": 4}'
+  -d '{"group_id": "GROUP_ID", "sport": "americanfootball_nfl", "week_number": 9, "game_count": 4}'
 
 # Post a result (triggers full scoring + standings pipeline)
 curl -X POST http://localhost:8000/dev/mock-results \
@@ -201,9 +191,7 @@ Tests use an isolated SQLite database (`test.db`) so they never touch your local
 
 1. Register at [the-odds-api.com](https://the-odds-api.com) — the **free tier** (500 requests/month) is enough for development and testing.
 2. Copy your API key and set `ODDS_API_KEY=your_key` in `.env`.
-3. The sport keys used by this app:
-   - NFL: `americanfootball_nfl`
-   - World Cup: `soccer_fifa_world_cup`
+3. The sport key used by this app: `americanfootball_nfl`.
 4. To verify the key works:
    ```bash
    curl "https://api.the-odds-api.com/v4/sports?apiKey=YOUR_KEY"

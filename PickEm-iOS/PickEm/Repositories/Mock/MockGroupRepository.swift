@@ -1,7 +1,7 @@
 import Foundation
 
 final class MockGroupRepository: GroupRepositoryProtocol {
-    private var groups: [Group] = [MockData.nflGroup, MockData.worldCupGroup]
+    private var groups: [Group] = [MockData.nflGroup]
 
     func fetchGroups() async throws -> [Group] {
         groups
@@ -21,7 +21,9 @@ final class MockGroupRepository: GroupRepositoryProtocol {
         seasonYear: Int?,
         blindPicks: Bool,
         superdogsEnabled: Bool,
-        superdogsPerUser: Int
+        superdogsPerUser: Int,
+        includePreseason: Bool,
+        includePlayoffs: Bool
     ) async throws -> Group {
         let group = Group(
             id: UUID().uuidString,
@@ -34,6 +36,8 @@ final class MockGroupRepository: GroupRepositoryProtocol {
             blindPicks: blindPicks,
             superdogsEnabled: superdogsEnabled,
             superdogsPerUser: superdogsPerUser,
+            includePreseason: includePreseason,
+            includePlayoffs: includePlayoffs,
             createdAt: Date()
         )
         groups.append(group)
