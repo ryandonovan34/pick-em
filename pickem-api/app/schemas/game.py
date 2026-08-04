@@ -25,7 +25,12 @@ class WeekRead(BaseModel):
     week_number: int
     label: str
     starts_on: Optional[date] = None
-    ends_on: Optional[date] = None   # explicit, falls back to starts_on + 6 days
+    # Raw value — null for a standard week (clients fall back to displaying
+    # the label, e.g. "Week 1"). Only non-null when the window genuinely
+    # exceeds the standard Thu-through-Monday-Night span (starts_on + 7
+    # days) — see games.py::_week_end, which is the *server-side* fallback
+    # used for window enforcement and must NOT leak into this field.
+    ends_on: Optional[date] = None
     created_at: datetime
     first_kickoff_at: Optional[datetime] = None
     last_kickoff_at: Optional[datetime] = None

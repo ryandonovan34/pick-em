@@ -67,14 +67,19 @@ def _week_to_read(week: Week, session: Session) -> WeekRead:
     games = _slate_games(week.id, session)
     first_kickoff = min((g.kickoff_at for g in games), default=None)
     last_kickoff = max((g.kickoff_at for g in games), default=None)
-    ends_on = _week_end(week)
+    # The RAW column, not _week_end()'s always-computed +7-day fallback:
+    # clients (iOS's Week.displayLabel) use "is ends_on set" to decide
+    # between showing "Week N" and a raw date range — a standard week must
+    # serialize ends_on=null to get the "Week N" label, even though
+    # _week_end()'s fallback is exactly what server-side window enforcement
+    # (add_game_to_slate, get_available_odds) should keep using internally.
     return WeekRead(
         id=week.id,
         group_id=week.group_id,
         week_number=week.week_number,
         label=week.label,
         starts_on=week.starts_on,
-        ends_on=ends_on,
+        ends_on=week.ends_on,
         created_at=week.created_at,
         first_kickoff_at=first_kickoff,
         last_kickoff_at=last_kickoff,

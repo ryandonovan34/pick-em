@@ -40,6 +40,12 @@ class TestNewGroupHasWeeksImmediately:
 
         week1 = next(w for w in weeks if w["week_number"] == 1)
         assert week1["label"] == "Week 1"
+        # Regression: _week_to_read() used to always serialize the
+        # server-side +7-day fallback into ends_on, even for a standard
+        # week — which made Week.displayLabel show a raw date range for
+        # EVERY week on iOS instead of "Week 1", "Week 2", etc. Only a
+        # genuinely non-standard window should have ends_on set.
+        assert week1["ends_on"] is None
 
     def test_preseason_included_when_group_opts_in(self, client: TestClient):
         headers = auth_headers(client)
