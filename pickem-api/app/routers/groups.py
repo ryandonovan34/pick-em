@@ -84,6 +84,14 @@ def create_group(
 
     # Admin is automatically a member.
     session.add(GroupMember(group_id=group.id, user_id=current_user.id))
+
+    # Weeks are calendar structure, not a byproduct of odds data — create the
+    # full season's week containers now so the group never shows "no weeks"
+    # just because nothing's been ingested for a given week yet. The admin
+    # still curates which games go into each week's slate.
+    from app.services.auto_slate import create_standard_season_weeks
+    create_standard_season_weeks(group, session)
+
     session.commit()
     session.refresh(group)
 

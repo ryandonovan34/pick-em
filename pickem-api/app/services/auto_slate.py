@@ -1,17 +1,26 @@
 """
 Automatic slate population.
 
-When a group is created, this service builds its initial weeks and links games
-from the odds pool. The scheduler calls it again after each odds ingest to
-add newly-available games to existing groups.
+Two things happen here, both keyed on the real NFL week number (see
+services/nfl_calendar.py):
 
-Games are bucketed by real NFL week number (see services/nfl_calendar.py).
-Preseason games are skipped unless group.include_preseason is set; playoff
-games are skipped unless group.include_playoffs is set. Re-runs are safe:
-get_or_create_week() reuses the existing Week for a given (group, week_number)
-instead of creating a duplicate, and is race-safe against the APScheduler
-background thread and concurrent admin requests hitting this at the same time
-(see migration 007's unique constraint).
+1. create_standard_season_weeks() eagerly creates the full season's week
+   CONTAINERS for a group — Week 1-18, plus Preseason/playoff weeks per the
+   group's include_preseason/include_playoffs — independent of whether the
+   odds pool has any games for them yet. Weeks are calendar structure, not a
+   byproduct of odds data; a group shouldn't show "no weeks" just because
+   nothing's been ingested for a given week yet. Called on group creation
+   and from the admin "populate" action.
+2. auto_populate_group() / auto_populate_all_groups() link odds-pool games
+   into the right week (creating it if step 1 somehow hasn't run yet).
+   Preseason games are skipped unless group.include_preseason is set;
+   playoff games are skipped unless group.include_playoffs is set.
+
+Both paths funnel through _get_or_create_week_row(), which reuses the
+existing Week for a given (group, week_number) instead of creating a
+duplicate, and is race-safe against the APScheduler background thread and
+concurrent admin requests hitting this at the same time (see migration 007's
+unique constraint).
 """
 
 import logging
@@ -22,10 +31,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models import Game, Group, SlateGame, Week
-from app.services.nfl_calendar import local_date, monday_of, nfl_week_number_and_label
+from app.services.nfl_calendar import (
+    label_for_week_number,
+    local_date,
+    monday_of,
+    nfl_season_start,
+    nfl_week_number_and_label,
+)
 from app.utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
+
+# How far before the season opener the single "Preseason" bucket's window
+# starts — generous on purpose (covers a Hall of Fame Game as well as the
+# regular 3-week preseason slate) since under-covering would silently reject
+# a real preseason game from being added to the slate.
+_PRESEASON_LOOKBACK_DAYS = 42
 
 
 def _new_games_for_group(group: Group, session: Session) -> list[Game]:
@@ -85,16 +106,18 @@ def _recompute_week_window(week: Week, session: Session) -> None:
     session.add(week)
 
 
-def get_or_create_week(
+def _get_or_create_week_row(
     group: Group,
     week_number: int,
     label: str,
-    games: list[Game],
+    starts_on: date,
+    ends_on: Optional[date],
     session: Session,
 ) -> Week:
     """
-    Return the Week for (group, week_number), creating it if needed, and link
-    `games` into its slate either way.
+    Return the Week for (group, week_number), creating it with the given
+    window if it doesn't exist yet. Does NOT touch games/slate membership —
+    see get_or_create_week() for the games-linking variant.
 
     Safe to call concurrently: two callers racing to create the same
     (group_id, week_number) will both attempt the insert, but the unique
@@ -107,7 +130,6 @@ def get_or_create_week(
     ).first()
 
     if week is None:
-        starts_on, ends_on = _week_window(games)
         candidate = Week(
             group_id=group.id, week_number=week_number, label=label,
             starts_on=starts_on, ends_on=ends_on,
@@ -124,9 +146,58 @@ def get_or_create_week(
             if week is None:
                 raise
 
+    return week
+
+
+def get_or_create_week(
+    group: Group,
+    week_number: int,
+    label: str,
+    games: list[Game],
+    session: Session,
+) -> Week:
+    """Return the Week for (group, week_number), creating it if needed
+    (window derived from `games`), and link `games` into its slate either way."""
+    starts_on, ends_on = _week_window(games)
+    week = _get_or_create_week_row(group, week_number, label, starts_on, ends_on, session)
     _link_new_games(week, games, session)
     _recompute_week_window(week, session)
     return week
+
+
+def _standard_season_week_numbers(group: Group) -> list[int]:
+    numbers = list(range(1, 19))  # Week 1-18 always present.
+    if group.include_preseason:
+        numbers.append(0)
+    if group.include_playoffs:
+        numbers.extend(range(19, 23))
+    return sorted(numbers)
+
+
+def create_standard_season_weeks(group: Group, session: Session) -> list[Week]:
+    """
+    Eagerly create every standard week container for the group's season —
+    independent of whether the odds pool has any games for them yet, so a
+    freshly-created group never shows "no weeks." Safe to call repeatedly
+    (e.g. every time the admin hits "populate"): existing weeks are left
+    untouched, only missing ones get created.
+    """
+    season_start = nfl_season_start(group.season_year)
+    weeks: list[Week] = []
+    for week_number in _standard_season_week_numbers(group):
+        if week_number == 0:
+            # Single lump "Preseason" bucket — spans several real weeks, so
+            # unlike a standard week it needs an explicit (wide) ends_on
+            # rather than relying on the +7-day standard-week fallback.
+            starts_on = monday_of(season_start - timedelta(days=_PRESEASON_LOOKBACK_DAYS))
+            ends_on: Optional[date] = season_start - timedelta(days=1)
+        else:
+            starts_on = monday_of(season_start + timedelta(weeks=week_number - 1))
+            ends_on = None  # standard Thu-Mon window; falls back to +7 days (games.py::_week_end)
+        weeks.append(_get_or_create_week_row(
+            group, week_number, label_for_week_number(week_number), starts_on, ends_on, session,
+        ))
+    return weeks
 
 
 def _populate_nfl(group: Group, games: list[Game], session: Session) -> list[Week]:

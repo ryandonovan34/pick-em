@@ -156,11 +156,25 @@ def populate_group_slate(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[Week]:
-    """Re-run auto-population for a group from the odds pool. Admin only."""
+    """
+    Ensure the group has its standard season week containers (covers groups
+    created before this existed), then attach any newly-available odds-pool
+    games to the right week. Admin only.
+    """
     group = _require_member(group_id, current_user, session)
     _require_admin(group, current_user)
-    from app.services.auto_slate import auto_populate_group
-    return auto_populate_group(group, session)
+
+    from app.services.auto_slate import auto_populate_group, create_standard_season_weeks
+    standard_weeks = create_standard_season_weeks(group, session)
+    session.commit()
+    for w in standard_weeks:
+        session.refresh(w)
+
+    populated_weeks = auto_populate_group(group, session)
+
+    by_id = {w.id: w for w in standard_weeks}
+    by_id.update({w.id: w for w in populated_weeks})
+    return list(by_id.values())
 
 
 # ── Games (slate management) ─────────────────────────────────────────────────
