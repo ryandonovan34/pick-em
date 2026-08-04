@@ -18,6 +18,24 @@ from app.utils import utc_now
 
 logger = logging.getLogger(__name__)
 
+# The Odds API splits NFL into separate endpoints per phase of the season —
+# 'americanfootball_nfl' only has odds/scores once the regular season starts;
+# preseason games live under their own key. The app's internal/group-facing
+# sport key stays unified as 'americanfootball_nfl' (a group's sport filter,
+# Group.include_preseason/include_playoffs, etc. all assume ONE NFL group
+# spans the whole season) — this maps that internal key to every real Odds
+# API key that should be queried on its behalf.
+_ODDS_API_SPORT_KEYS: dict[str, list[str]] = {
+    "americanfootball_nfl": ["americanfootball_nfl", "americanfootball_nfl_preseason"],
+}
+
+
+def odds_api_sport_keys(sport: str) -> list[str]:
+    """Every real Odds API sport key that should be queried for the given
+    internal/group-facing sport. Falls back to [sport] unchanged for any
+    sport without a specific mapping."""
+    return _ODDS_API_SPORT_KEYS.get(sport, [sport])
+
 
 def round_spread(raw_spread: float) -> float:
     """
@@ -63,16 +81,36 @@ async def fetch_odds(sport: str) -> list[dict]:
 
 def ingest_odds(sport: str) -> int:
     """
-    Fetch odds from The Odds API and upsert into the games table.
-    New games are added to the pool; existing games have their spread + kickoff updated in place.
+    Fetch odds from The Odds API for every real API key mapped to `sport`
+    (see odds_api_sport_keys — e.g. 'americanfootball_nfl' expands to both
+    the regular-season+playoffs endpoint and the separate preseason one) and
+    upsert into the games table. New games are added to the pool; existing
+    games have their spread + kickoff updated in place. Every resulting Game
+    row is stored with Game.sport = `sport` (the internal/group-facing key),
+    regardless of which real API key it came from, so a group filtering on
+    sport='americanfootball_nfl' sees preseason, regular-season, and playoff
+    games all in the same pool — whether they're auto-populated is governed
+    separately by Group.include_preseason/include_playoffs.
+
     Slate membership is tracked separately via the slate_games junction table.
-    Returns the count of games processed.
+    Returns the total count of games processed across all mapped API keys.
     """
     if not settings.ODDS_API_KEY:
         logger.warning("ODDS_API_KEY not configured — skipping odds ingest for %s", sport)
         return 0
 
-    url = f"{settings.ODDS_API_BASE_URL}/v4/sports/{sport}/odds"
+    total = 0
+    for api_sport_key in odds_api_sport_keys(sport):
+        total += _ingest_one(api_sport_key, stored_sport=sport)
+    return total
+
+
+def _ingest_one(api_sport_key: str, stored_sport: str) -> int:
+    """Ingest from a single real Odds API sport key. Failures here (e.g. a
+    404 for a key with no current listings, like preseason out of season)
+    are logged and swallowed so they don't block ingest for other keys
+    mapped to the same internal sport."""
+    url = f"{settings.ODDS_API_BASE_URL}/v4/sports/{api_sport_key}/odds"
     params = {
         "apiKey": settings.ODDS_API_KEY,
         "regions": "us",
@@ -87,7 +125,7 @@ def ingest_odds(sport: str) -> int:
         except httpx.HTTPStatusError as exc:
             logger.warning(
                 "Odds API returned %s for sport '%s' — skipping ingest. Body: %s",
-                exc.response.status_code, sport, exc.response.text[:200],
+                exc.response.status_code, api_sport_key, exc.response.text[:200],
             )
             return 0
     raw_games: list[dict] = response.json()
@@ -114,7 +152,7 @@ def ingest_odds(sport: str) -> int:
             else:
                 session.add(Game(
                     odds_api_id=g["id"],
-                    sport=sport,
+                    sport=stored_sport,
                     home_team=g["home_team"],
                     away_team=g["away_team"],
                     spread=spread,
@@ -125,7 +163,7 @@ def ingest_odds(sport: str) -> int:
             count += 1
         session.commit()
 
-    logger.info("Odds ingest: %d games upserted for %s", count, sport)
+    logger.info("Odds ingest: %d games upserted for api_sport=%s (stored as %s)", count, api_sport_key, stored_sport)
     return count
 
 

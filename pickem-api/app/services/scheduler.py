@@ -233,7 +233,7 @@ def _fetch_and_process_results() -> None:
     """
     from app.database import engine
     from app.models import Game, Group, GroupMember, User, Week
-    from app.services.odds import fetch_scores
+    from app.services.odds import fetch_scores, odds_api_sport_keys
     from app.services.results import process_game_result
     from app.utils import utc_now
     from sqlmodel import Session, select
@@ -255,11 +255,16 @@ def _fetch_and_process_results() -> None:
         if not pending:
             return
 
-        # Fetch scores for each sport that has pending games.
+        # Fetch scores for each real Odds API key mapped to a pending game's
+        # (internal) sport — e.g. 'americanfootball_nfl' expands to both the
+        # regular-season+playoffs and the separate preseason scores endpoint,
+        # since Game.sport is normalized to the internal key regardless of
+        # which one a game's odds actually came from (see odds.py::ingest_odds).
         score_map: dict[str, tuple[int, int]] = {}
-        for sport in {g.sport for g in pending}:
+        api_sport_keys = {key for g in pending for key in odds_api_sport_keys(g.sport)}
+        for api_sport_key in api_sport_keys:
             try:
-                for s in fetch_scores(sport):
+                for s in fetch_scores(api_sport_key):
                     if not s.get("completed") or not s.get("scores"):
                         continue
                     home = next((x for x in s["scores"] if x["name"] == s["home_team"]), None)
@@ -267,7 +272,7 @@ def _fetch_and_process_results() -> None:
                     if home and away:
                         score_map[s["id"]] = (int(home["score"]), int(away["score"]))
             except Exception:
-                logger.exception("Failed to fetch scores for sport=%s", sport)
+                logger.exception("Failed to fetch scores for api_sport=%s", api_sport_key)
 
         for game in pending:
             if not game.odds_api_id or game.odds_api_id not in score_map:
