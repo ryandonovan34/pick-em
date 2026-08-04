@@ -28,7 +28,7 @@ A full-stack NFL pick'em challenge app. Users join groups, pick games against th
   - Sport and challenge mode
   - **Blind picks** — when enabled, other members' picks are hidden until that game's kickoff. Enforced server-side.
   - **Superdogs** — an optional feature the admin can enable (see below).
-  - **Preseason / playoffs** — the admin chooses whether auto-populated weeks include the preseason and/or the playoffs. Weeks map directly onto the real NFL season structure (Preseason → Week 1-18 → Wild Card/Divisional/Conference Championships/Super Bowl); the admin can still manually add a week outside these settings regardless.
+  - **Preseason / playoffs** — the admin chooses whether the group's standard weeks include the 4 preseason weeks and/or the playoffs. Weeks map directly onto the real NFL season structure (Preseason Week 1-4 → Week 1-18 → Wild Card/Divisional/Conference Championships/Super Bowl) and are created empty as soon as the group exists — the admin then picks which games from the odds pool go into each week's slate; nothing is auto-selected. All group members are notified as soon as the admin adds the first game to a week.
 
 ### Picks & Scoring
 

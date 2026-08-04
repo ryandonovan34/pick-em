@@ -156,22 +156,16 @@ def _schedule_results_fetch() -> None:
 # ── Internal job functions ────────────────────────────────────────────────────
 
 def _refresh_odds_job() -> None:
-    from app.database import engine
-    from app.services.auto_slate import auto_populate_all_groups
+    """Refill the odds pool. Games are NEVER auto-added to any group's
+    slate — the admin picks games explicitly (games.py::add_game_to_slate),
+    which is also what triggers the slate-ready/game-added notification."""
     from app.services.odds import ingest_odds
-    from sqlmodel import Session
 
     for sport in _SUPPORTED_SPORTS:
         try:
             ingest_odds(sport)
         except Exception:
             logger.exception("Odds refresh failed for sport=%s", sport)
-
-    try:
-        with Session(engine) as session:
-            auto_populate_all_groups(session)
-    except Exception:
-        logger.exception("auto_populate_all_groups failed after odds refresh")
 
 
 def _refresh_sport_job(sport: str) -> None:

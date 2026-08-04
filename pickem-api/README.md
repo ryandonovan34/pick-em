@@ -156,9 +156,10 @@ curl -X POST http://localhost:8000/dev/mock-games \
   -H "Content-Type: application/json" \
   -d '{"sport": "americanfootball_nfl", "week_label": "Week 12", "game_count": 4}'
 
-# Create/reuse a week (by NFL week number) and populate it in one shot.
-# week_label and week_number are both optional — omit week_label to auto-derive
-# it (e.g. "Week 9", "Preseason", "Wild Card") from week_number.
+# Create/reuse a week (by NFL week number, -4..-1 for the 4 preseason weeks)
+# and populate it in one shot. week_label and week_number are both optional —
+# omit week_label to auto-derive it (e.g. "Week 9", "Preseason Week 1",
+# "Wild Card") from week_number.
 curl -X POST http://localhost:8000/dev/seed-week \
   -H "Content-Type: application/json" \
   -d '{"group_id": "GROUP_ID", "sport": "americanfootball_nfl", "week_number": 9, "game_count": 4}'

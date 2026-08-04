@@ -17,9 +17,29 @@ from app.services.nfl_calendar import (
 
 
 class TestNflWeekNumberAndLabel:
-    def test_day_before_season_start_is_preseason(self):
+    def test_day_before_season_start_is_preseason_week_4(self):
         start = nfl_season_start(2025)
-        assert nfl_week_number_and_label(start - timedelta(days=1), 2025) == (0, "Preseason")
+        assert nfl_week_number_and_label(start - timedelta(days=1), 2025) == (-1, "Preseason Week 4")
+
+    def test_eight_days_before_start_is_preseason_week_3(self):
+        start = nfl_season_start(2025)
+        assert nfl_week_number_and_label(start - timedelta(days=8), 2025) == (-2, "Preseason Week 3")
+
+    def test_fifteen_days_before_start_is_preseason_week_2(self):
+        start = nfl_season_start(2025)
+        assert nfl_week_number_and_label(start - timedelta(days=15), 2025) == (-3, "Preseason Week 2")
+
+    def test_twenty_two_days_before_start_is_preseason_week_1(self):
+        start = nfl_season_start(2025)
+        assert nfl_week_number_and_label(start - timedelta(days=22), 2025) == (-4, "Preseason Week 1")
+
+    def test_far_before_start_still_classifies_as_preseason_week_1(self):
+        # No real preseason game is scheduled this far out, but classification
+        # shouldn't error — it should just keep extending backward.
+        start = nfl_season_start(2025)
+        week_num, label = nfl_week_number_and_label(start - timedelta(days=60), 2025)
+        assert week_num < -4
+        assert label.startswith("Preseason Week")
 
     def test_season_start_itself_is_week_1(self):
         start = nfl_season_start(2025)
@@ -84,7 +104,7 @@ class TestThursdayAnchorVsMondaySnap:
         snapped = monday_of(start)
         assert snapped < start  # snapping moved it backward across the boundary
         week_num, label = nfl_week_number_and_label(snapped, 2025)
-        assert (week_num, label) == (0, "Preseason")
+        assert (week_num, label) == (-1, "Preseason Week 4")
 
 
 class TestThursdayOf:
@@ -138,7 +158,8 @@ class TestWeeklySlotKickoff:
 
 class TestLabelForWeekNumber:
     def test_preseason(self):
-        assert label_for_week_number(0) == "Preseason"
+        assert label_for_week_number(-4) == "Preseason Week 1"
+        assert label_for_week_number(-1) == "Preseason Week 4"
 
     def test_regular_season(self):
         assert label_for_week_number(9) == "Week 9"

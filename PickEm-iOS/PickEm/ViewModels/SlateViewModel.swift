@@ -76,7 +76,11 @@ final class SlateViewModel {
 
     // MARK: - Admin slate management
 
-    func populate() async {
+    /// Backfills the group's standard season weeks (new groups already have
+    /// them from creation — this mainly matters for groups created before
+    /// that existed). Never adds games to a slate; the admin always picks
+    /// those explicitly via addGame(_:to:).
+    func syncStandardWeeks() async {
         isPopulating = true
         defer { isPopulating = false }
         do {
@@ -85,7 +89,7 @@ final class SlateViewModel {
                 await loadWeeks()
             }
         } catch {
-            errorMessage = "Failed to populate slate: \(error.localizedDescription)"
+            errorMessage = "Failed to sync weeks: \(error.localizedDescription)"
         }
     }
 

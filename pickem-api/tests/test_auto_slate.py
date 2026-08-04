@@ -1,7 +1,9 @@
 """
-Integration tests for auto_slate.py — in particular that include_preseason/
-include_playoffs actually gate what gets auto-populated, and that re-running
-populate on an already-populated week merges instead of duplicating it.
+Integration tests for auto_slate.py — in particular that
+create_standard_season_weeks() respects include_preseason/include_playoffs
+and never touches slate membership (games are only ever added by an admin
+explicitly picking them), and that get_or_create_week() (used by dev.py's
+mock-data seeding) merges into an existing week instead of duplicating it.
 """
 
 import uuid
@@ -11,7 +13,7 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models import Game, Group, SlateGame, Week
-from app.services.auto_slate import _week_window, auto_populate_group, create_standard_season_weeks
+from app.services.auto_slate import _week_window, create_standard_season_weeks, get_or_create_week
 from app.services.nfl_calendar import nfl_season_start, thursday_of, weekly_slot_kickoff
 from app.utils import utc_now
 
@@ -27,8 +29,7 @@ def mem_session_fixture():
 
 def _future_season_year() -> int:
     """A season_year whose start is safely in the future no matter when the
-    test suite runs — auto_populate only considers games with kickoff > now,
-    so fixtures need a season_start that's still ahead of "now"."""
+    test suite runs."""
     return utc_now().year + 2
 
 
@@ -42,18 +43,6 @@ def _make_group(session: Session, **overrides) -> Group:
     session.add(group)
     session.flush()
     return group
-
-
-def _make_game(session: Session, kickoff_offset_days: float, home: str, away: str) -> Game:
-    game = Game(
-        sport="americanfootball_nfl",
-        home_team=home, away_team=away,
-        spread=-3.5, favorite_team=home,
-        kickoff_at=utc_now() + timedelta(days=kickoff_offset_days),
-    )
-    session.add(game)
-    session.flush()
-    return game
 
 
 def _game_at(kickoff, home: str = "Team A", away: str = "Team B") -> Game:
@@ -88,60 +77,13 @@ class TestWeekWindowCoversMondayNightFootball:
         assert ends_on > starts_on + timedelta(days=7)
 
 
-class TestPreseasonPlayoffFiltering:
-    def test_preseason_excluded_by_default(self, mem_session: Session):
-        group = _make_group(mem_session)  # include_preseason defaults False
-        season_start = nfl_season_start(group.season_year)
-        days_until_start = (season_start - utc_now().date()).days
-        # Simulate a preseason game: kicks off a few days before the season
-        # start, but still in the future relative to "now" (auto_populate
-        # only looks at future games) — season_year is chosen far enough
-        # ahead that days_until_start comfortably exceeds this offset.
-        _make_game(mem_session, kickoff_offset_days=days_until_start - 5, home="Team A", away="Team B")
-
-        weeks = auto_populate_group(group, mem_session)
-        assert weeks == []
-        assert mem_session.exec(select(Week)).all() == []
-
-    def test_preseason_included_when_enabled(self, mem_session: Session):
-        group = _make_group(mem_session, include_preseason=True)
-        season_start = nfl_season_start(group.season_year)
-        days_until_start = (season_start - utc_now().date()).days
-        _make_game(mem_session, kickoff_offset_days=days_until_start - 5, home="Team A", away="Team B")
-
-        weeks = auto_populate_group(group, mem_session)
-        assert len(weeks) == 1
-        assert weeks[0].label == "Preseason"
-        assert weeks[0].week_number == 0
-
-    def test_playoffs_excluded_when_disabled(self, mem_session: Session):
-        group = _make_group(mem_session, include_playoffs=False)
-        season_start = nfl_season_start(group.season_year)
-        days_until_start = (season_start - utc_now().date()).days
-        # Week 19 (Wild Card) spans day-offsets [18*7, 19*7) from season start.
-        _make_game(mem_session, kickoff_offset_days=days_until_start + 18 * 7 + 3, home="Team A", away="Team B")
-
-        weeks = auto_populate_group(group, mem_session)
-        assert weeks == []
-
-    def test_playoffs_included_by_default(self, mem_session: Session):
-        group = _make_group(mem_session)  # include_playoffs defaults True
-        season_start = nfl_season_start(group.season_year)
-        days_until_start = (season_start - utc_now().date()).days
-        _make_game(mem_session, kickoff_offset_days=days_until_start + 18 * 7 + 3, home="Team A", away="Team B")
-
-        weeks = auto_populate_group(group, mem_session)
-        assert len(weeks) == 1
-        assert weeks[0].label == "Wild Card"
-        assert weeks[0].week_number == 19
-
-
-class TestCreateStandardSeasonWeeks:
+class TestCreateStandardSeasonWeeksNeverAddsGames:
     """
     Weeks are calendar structure, not a byproduct of odds data — a
-    freshly-created group should immediately have all 18 regular-season
-    weeks (plus playoffs/preseason per its settings) even with zero games
-    in the odds pool.
+    freshly-created group should immediately have all its standard weeks
+    even with zero games in the odds pool. But the containers must stay
+    EMPTY: the admin picks which games go into each week's slate, nothing
+    is auto-selected.
     """
 
     def test_default_group_gets_regular_season_and_playoffs_but_not_preseason(self, mem_session: Session):
@@ -149,17 +91,38 @@ class TestCreateStandardSeasonWeeks:
         weeks = create_standard_season_weeks(group, mem_session)
         numbers = sorted(w.week_number for w in weeks)
         assert numbers == list(range(1, 19)) + list(range(19, 23))
-        assert 0 not in numbers
+        assert all(n >= 1 for n in numbers)  # no preseason (negative) numbers
 
-    def test_preseason_enabled_adds_week_zero(self, mem_session: Session):
+    def test_preseason_enabled_adds_four_distinct_weeks(self, mem_session: Session):
         group = _make_group(mem_session, include_preseason=True)
         weeks = create_standard_season_weeks(group, mem_session)
-        preseason = next(w for w in weeks if w.week_number == 0)
-        assert preseason.label == "Preseason"
-        # Explicit wide window (not the standard +7-day fallback) since a
-        # single lump bucket spans several real weeks.
-        assert preseason.ends_on is not None
-        assert preseason.ends_on < nfl_season_start(group.season_year)
+        preseason = sorted((w for w in weeks if w.week_number < 0), key=lambda w: w.week_number)
+        assert [w.week_number for w in preseason] == [-4, -3, -2, -1]
+        assert [w.label for w in preseason] == [
+            "Preseason Week 1", "Preseason Week 2", "Preseason Week 3", "Preseason Week 4",
+        ]
+        # Each is a standard-width window (no explicit ends_on needed) —
+        # chronologically increasing and non-overlapping.
+        for w in preseason:
+            assert w.ends_on is None
+        assert [w.starts_on for w in preseason] == sorted(w.starts_on for w in preseason)
+
+    def test_preseason_week_4_ends_the_day_before_the_season_opens(self, mem_session: Session):
+        group = _make_group(mem_session, include_preseason=True)
+        weeks = create_standard_season_weeks(group, mem_session)
+        week4 = next(w for w in weeks if w.week_number == -1)
+        season_start = nfl_season_start(group.season_year)
+        # starts_on + 7 days (the standard-week fallback) must reach at
+        # least the day before the opener, or a real preseason Week 4 game
+        # right before final roster cuts would be wrongly rejected.
+        assert week4.starts_on + timedelta(days=7) >= season_start - timedelta(days=1)
+
+    def test_no_games_attached_to_any_created_week(self, mem_session: Session):
+        group = _make_group(mem_session, include_preseason=True)
+        weeks = create_standard_season_weeks(group, mem_session)
+        week_ids = [w.id for w in weeks]
+        linked = mem_session.exec(select(SlateGame).where(SlateGame.week_id.in_(week_ids))).all()  # type: ignore[attr-defined]
+        assert linked == []
 
     def test_playoffs_disabled_stops_at_week_18(self, mem_session: Session):
         group = _make_group(mem_session, include_playoffs=False)
@@ -191,23 +154,28 @@ class TestCreateStandardSeasonWeeks:
         assert week1_again.id == week1_id
 
 
-class TestRepeatedPopulateMergesIntoExistingWeek:
+class TestGetOrCreateWeekMergesInsteadOfDuplicating:
+    """get_or_create_week() is only used by dev.py's mock-data seeding now
+    (production never auto-adds games) — still needs to be race/re-run safe."""
+
     def test_second_batch_for_same_week_joins_existing_row_not_a_duplicate(self, mem_session: Session):
         group = _make_group(mem_session)
         season_start = nfl_season_start(group.season_year)
-        days_until_start = (season_start - utc_now().date()).days
+        thu = thursday_of(season_start + timedelta(days=30))
 
-        game1 = _make_game(mem_session, kickoff_offset_days=days_until_start + 3, home="Team A", away="Team B")
-        weeks = auto_populate_group(group, mem_session)
-        assert len(weeks) == 1
-        first_week_id = weeks[0].id
+        game1 = _game_at(weekly_slot_kickoff(thu, 0, 2), home="Team A", away="Team B")
+        mem_session.add(game1)
+        mem_session.flush()
+        week = get_or_create_week(group, 5, "Week 5", [game1], mem_session)
+        first_week_id = week.id
 
-        # A second game arrives later (simulating a subsequent odds ingest)
+        # A second game arrives later (simulating a subsequent dev seed call)
         # that maps to the SAME NFL week.
-        game2 = _make_game(mem_session, kickoff_offset_days=days_until_start + 1, home="Team C", away="Team D")
-        weeks_again = auto_populate_group(group, mem_session)
-        assert len(weeks_again) == 1
-        assert weeks_again[0].id == first_week_id  # merged, not duplicated
+        game2 = _game_at(weekly_slot_kickoff(thu, 1, 2), home="Team C", away="Team D")
+        mem_session.add(game2)
+        mem_session.flush()
+        week_again = get_or_create_week(group, 5, "Week 5", [game2], mem_session)
+        assert week_again.id == first_week_id  # merged, not duplicated
 
         all_weeks = mem_session.exec(select(Week).where(Week.group_id == group.id)).all()
         assert len(all_weeks) == 1

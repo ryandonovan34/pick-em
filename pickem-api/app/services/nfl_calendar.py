@@ -43,8 +43,8 @@ def nfl_season_start(season_year: int) -> date:
 
 
 def label_for_week_number(week_number: int) -> str:
-    if week_number == 0:
-        return "Preseason"
+    if week_number < 0:
+        return f"Preseason Week {week_number + 5}"
     return PLAYOFF_LABELS.get(week_number, f"Week {week_number}")
 
 
@@ -55,14 +55,24 @@ def nfl_week_number_and_label(d: date, season_year: int) -> tuple[int, str]:
 
     Works on any raw date — does NOT require Monday-alignment. Buckets in
     7-day windows from the season's Thursday opener:
-      - before season start -> (0, "Preseason")
+      - before season start -> (-4..-1, "Preseason Week 1".."Preseason Week 4"),
+        counting backward — Preseason Week 4 is the 7 days right before the
+        opener, Preseason Week 1 the 7 days before that (typically just the
+        Hall of Fame Game). A date more than 4 weeks out still gets a
+        (graceful, if cosmetically odd) negative week number rather than
+        erroring — real preseason schedules never go that far back.
       - weeks 1-18          -> (n, "Week n")
       - weeks 19-22         -> (n, playoff label)
       - beyond              -> (n, "Week n") fallback
     """
     season_start = nfl_season_start(season_year)
     days = (d - season_start).days
-    week_num = 0 if days < 0 else days // 7 + 1
+    if days < 0:
+        weeks_before_start = (-days - 1) // 7 + 1
+        preseason_week = 5 - weeks_before_start
+        week_num = preseason_week - 5
+    else:
+        week_num = days // 7 + 1
     return week_num, label_for_week_number(week_num)
 
 

@@ -54,8 +54,19 @@ class TestNewGroupHasWeeksImmediately:
         resp = client.get(f"/groups/{group['id']}/weeks", headers=headers)
         weeks = resp.json()
 
-        preseason = next(w for w in weeks if w["week_number"] == 0)
-        assert preseason["label"] == "Preseason"
+        preseason = sorted((w for w in weeks if w["week_number"] < 0), key=lambda w: w["week_number"])
+        assert [w["week_number"] for w in preseason] == [-4, -3, -2, -1]
+        assert [w["label"] for w in preseason] == [
+            "Preseason Week 1", "Preseason Week 2", "Preseason Week 3", "Preseason Week 4",
+        ]
+
+    def test_no_games_in_any_week_right_after_creation(self, client: TestClient):
+        headers = auth_headers(client)
+        group = _create_group(client, headers, include_preseason=True)
+
+        resp = client.get(f"/groups/{group['id']}/weeks", headers=headers)
+        weeks = resp.json()
+        assert all(w["first_kickoff_at"] is None and w["last_kickoff_at"] is None for w in weeks)
 
     def test_playoffs_excluded_when_group_opts_out(self, client: TestClient):
         headers = auth_headers(client)

@@ -75,8 +75,8 @@ struct SlateView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("New Week") { showNewWeekSheet = true }
-                    Button("Populate from Pool") {
-                        Task { await slateViewModel.populate() }
+                    Button("Sync Season Weeks") {
+                        Task { await slateViewModel.syncStandardWeeks() }
                     }
                 } label: {
                     Image(systemName: "plus")

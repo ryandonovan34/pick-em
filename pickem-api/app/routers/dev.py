@@ -109,12 +109,12 @@ class SeedWeekRequest(BaseModel):
     group_id: uuid.UUID
     sport: str
     game_count: int = 4
-    # Explicit NFL week number (0=preseason, 1-18 regular, 19-22 playoffs).
+    # Explicit NFL week number (-4..-1 preseason, 1-18 regular, 19-22 playoffs).
     # If omitted, derived from the games' kickoff dates via the group's
-    # season_year — the same canonical mapping auto-populate and manual
-    # create-week use, so all three week-creation paths agree.
+    # season_year — the same canonical mapping create_standard_season_weeks
+    # and manual create-week use, so all week-creation paths agree.
     week_number: Optional[int] = None
-    # If omitted, auto-derived from week_number (e.g. "Week 9", "Preseason").
+    # If omitted, auto-derived from week_number (e.g. "Week 9", "Preseason Week 1").
     week_label: Optional[str] = None
     base_kickoff_at: Optional[datetime] = None
     template_offset: int = 0
