@@ -5,8 +5,12 @@ at the service-layer (see tests/test_auto_slate.py for the unit-level
 coverage of create_standard_season_weeks itself).
 """
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 
+from app.services.nfl_calendar import nfl_season_start
+from app.utils import utc_now
 from tests.conftest import auth_headers
 
 
@@ -67,6 +71,42 @@ class TestNewGroupHasWeeksImmediately:
         resp = client.get(f"/groups/{group['id']}/weeks", headers=headers)
         weeks = resp.json()
         assert all(w["first_kickoff_at"] is None and w["last_kickoff_at"] is None for w in weeks)
+
+    def test_hall_of_fame_game_can_be_added_to_preseason_week_1(self, client: TestClient):
+        # Regression: the real Hall of Fame Game kicks off ~5 weeks before
+        # the season opener — a full week earlier than the other 3
+        # preseason weeks' even 7-day cadence. Preseason Week 1's window
+        # must be wide enough (see auto_slate.create_standard_season_weeks
+        # and games.py::_week_end) that add_game_to_slate doesn't reject it
+        # as "outside this week's window".
+        headers = auth_headers(client)
+        future_year = utc_now().year + 2
+        group = _create_group(client, headers, include_preseason=True, season_year=future_year)
+
+        weeks = client.get(f"/groups/{group['id']}/weeks", headers=headers).json()
+        week1 = next(w for w in weeks if w["week_number"] == -4)
+
+        season_start = nfl_season_start(future_year)
+        hof_kickoff = datetime(
+            season_start.year, season_start.month, season_start.day, 20, 15, tzinfo=timezone.utc
+        ) - timedelta(weeks=5)
+
+        seed_resp = client.post("/dev/mock-games", json={
+            "sport": "americanfootball_nfl",
+            "week_label": "Preseason Week 1",
+            "game_count": 1,
+            "week_number": -4,
+            "base_kickoff_at": hof_kickoff.isoformat(),
+        })
+        assert seed_resp.status_code == 201, seed_resp.text
+        game = seed_resp.json()[0]
+
+        add_resp = client.post(
+            f"/groups/{group['id']}/weeks/{week1['id']}/games",
+            headers=headers,
+            json={"odds_api_id": game["odds_api_id"]},
+        )
+        assert add_resp.status_code == 201, add_resp.text
 
     def test_playoffs_excluded_when_group_opts_out(self, client: TestClient):
         headers = auth_headers(client)

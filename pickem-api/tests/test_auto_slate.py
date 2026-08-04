@@ -107,6 +107,18 @@ class TestCreateStandardSeasonWeeksNeverAddsGames:
             assert w.ends_on is None
         assert [w.starts_on for w in preseason] == sorted(w.starts_on for w in preseason)
 
+    def test_preseason_week_1_starts_generously_early_for_the_hall_of_fame_game(self, mem_session: Session):
+        # The real Hall of Fame Game kicks off ~5 weeks before the season
+        # opener — a full week earlier than Preseason Weeks 2-4's even
+        # 7-day cadence (which only reaches 4 weeks back). Week 1's anchor
+        # must be wide enough that a game 5 weeks out still falls on or
+        # after its starts_on.
+        group = _make_group(mem_session, include_preseason=True)
+        weeks = create_standard_season_weeks(group, mem_session)
+        week1 = next(w for w in weeks if w.week_number == -4)
+        season_start = nfl_season_start(group.season_year)
+        assert week1.starts_on <= season_start - timedelta(weeks=5)
+
     def test_preseason_week_4_ends_the_day_before_the_season_opens(self, mem_session: Session):
         group = _make_group(mem_session, include_preseason=True)
         weeks = create_standard_season_weeks(group, mem_session)

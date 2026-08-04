@@ -158,12 +158,25 @@ def create_standard_season_weeks(group: Group, session: Session) -> list[Week]:
     season_start = nfl_season_start(group.season_year)
     weeks: list[Week] = []
     for week_number in _standard_season_week_numbers(group):
-        if week_number < 0:
-            # Preseason Week N (1-4, oldest to newest) — each is its own
-            # clean 7-day bucket counting backward from the opener, exactly
-            # matching nfl_week_number_and_label's classification, so it
-            # relies on the same +7-day fallback as a regular week (no
-            # explicit ends_on needed — see games.py::_week_end).
+        if week_number == -4:
+            # Preseason Week 1 is the odd one out: real NFL preseason opens
+            # with the Hall of Fame Game, played by just two teams roughly
+            # 5 weeks before the season opener — a full week earlier than
+            # the evenly-spaced 7-day cadence the other 3 preseason weeks
+            # follow (which starts 4 weeks/28 days out). Anchoring this
+            # week's starts_on 8 weeks back (instead of 4) gives a generous
+            # margin so that lone early game still falls inside this week's
+            # window; games.py::_week_end() extends this week's effective
+            # end up to the day before Preseason Week 2 starts (rather than
+            # the usual +7 fallback), so the wide gap is fully covered
+            # without needing an explicit ends_on here (which would make
+            # iOS render a raw date range instead of "Preseason Week 1").
+            starts_on = season_start - timedelta(weeks=8)
+        elif week_number < 0:
+            # Preseason Weeks 2-4 — clean 7-day buckets counting backward
+            # from the opener, matching nfl_week_number_and_label's
+            # classification, relying on the same +7-day fallback as a
+            # regular week (no explicit ends_on needed).
             weeks_before_start = -week_number
             starts_on = season_start - timedelta(days=weeks_before_start * 7)
         else:

@@ -1,9 +1,10 @@
 """
 Week and game slate management.
 
-Weeks are the time-boxed containers for a pick slate. When a group is created
-the auto-slate service populates weeks automatically from the odds pool.
-Admins can still manually add or remove games from a slate.
+Weeks are the time-boxed containers for a pick slate, created empty as
+standard season containers when a group is made (see
+auto_slate.create_standard_season_weeks). Admins add or remove games from a
+slate explicitly — nothing is auto-populated.
 
 The slate_games junction table lets the same game appear in multiple groups'
 slates simultaneously, so odds updates and result posting flow through once.
@@ -52,15 +53,34 @@ def _slate_games(week_id: uuid.UUID, session: Session) -> list[Game]:
 
 # ── Weeks ────────────────────────────────────────────────────────────────────
 
-def _week_end(week: Week) -> Optional[date]:
-    """The last day of this week's window. Explicit ends_on wins; falls back
-    to the standard NFL week when unset — Thursday through the FOLLOWING
+def _week_end(week: Week, session: Session) -> Optional[date]:
+    """The last day of this week's window. Explicit ends_on wins. Otherwise
+    falls back to the standard NFL week — Thursday through the FOLLOWING
     Monday (Monday Night Football), which is +7 days from a Monday-anchored
     starts_on, not +6 (a real NFL week never fits Mon-Sun; it structurally
-    always runs into the next ISO week for its Monday game)."""
+    always runs into the next ISO week for its Monday game) — UNLESS the
+    next standard week (by week_number, within the same group) starts more
+    than 7 days later, in which case the window extends up to the day
+    before that next week starts. This only changes anything for Preseason
+    Week 1, whose real-world window is wider than 7 days (the Hall of Fame
+    Game kicks off ~5 weeks before the season, a full week ahead of the
+    other 3 preseason weeks' even 7-day cadence — see
+    auto_slate.create_standard_season_weeks); every other week's next
+    sibling is exactly 7 days later, so max() below just reduces to the
+    plain +7 fallback for them."""
     if week.ends_on:
         return week.ends_on
-    return (week.starts_on + timedelta(days=7)) if week.starts_on else None
+    if week.starts_on is None:
+        return None
+    fallback = week.starts_on + timedelta(days=7)
+    next_week = session.exec(
+        select(Week)
+        .where(Week.group_id == week.group_id, Week.week_number > week.week_number)
+        .order_by(Week.week_number)
+    ).first()
+    if next_week is not None and next_week.starts_on is not None:
+        return max(fallback, next_week.starts_on - timedelta(days=1))
+    return fallback
 
 
 def _week_to_read(week: Week, session: Session) -> WeekRead:
@@ -244,7 +264,7 @@ def add_game_to_slate(
     # Monday night football) is already the next day in UTC.
     if week.starts_on is not None:
         game_date = local_date(ensure_utc(game.kickoff_at))
-        week_end = _week_end(week)
+        week_end = _week_end(week, session)
         if not (week.starts_on <= game_date <= week_end):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -412,7 +432,7 @@ def get_available_odds(
             from sqlalchemy import func, cast
             from sqlalchemy.types import Date as SADate
             week_start = target_week.starts_on
-            week_end_exclusive = _week_end(target_week) + timedelta(days=1)
+            week_end_exclusive = _week_end(target_week, session) + timedelta(days=1)
             query = query.where(
                 cast(func.timezone("America/New_York", Game.kickoff_at), SADate) >= week_start,  # type: ignore[arg-type]
                 cast(func.timezone("America/New_York", Game.kickoff_at), SADate) < week_end_exclusive,    # type: ignore[arg-type]
