@@ -63,6 +63,7 @@
 		A918F19C4E30E0F7E89A9023 /* PickViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1445D09848B29DF7277C421 /* PickViewModelTests.swift */; };
 		A9451070C04871831F9D0713 /* PickRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DB9DAF48866EF58FC5A79B /* PickRepositoryProtocol.swift */; };
 		AA160FC92FD9C11A00C5B92D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AA160FC72FD9C0DA00C5B92D /* GoogleService-Info.plist */; };
+		CBA3F3A770BFA9E91821AD74 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43B6AE801EA0BDB3350016E5 /* Assets.xcassets */; };
 		AA8F6C912FD1A65800AEE67D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8F6C8F2FD1A65800AEE67D /* Theme.swift */; };
 		AA8F6C942FD1A68900AEE67D /* OnLoadModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8F6C932FD1A68900AEE67D /* OnLoadModifier.swift */; };
 		AAFB70A42FD993D20060B9C1 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AAEDB98A2FD991D9004E552E /* FirebaseCore */; };
@@ -113,6 +114,7 @@
 		48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkServiceTests.swift; sourceTree = "<group>"; };
 		4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PickEm.entitlements; sourceTree = "<group>"; };
 		ED26D74873489593DA42A67F /* PickEmRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PickEmRelease.entitlements; sourceTree = "<group>"; };
+		43B6AE801EA0BDB3350016E5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateViewModelTests.swift; sourceTree = "<group>"; };
 		5854F0C060B472B83CBA5E75 /* StandingDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingDTO.swift; sourceTree = "<group>"; };
 		58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRepositoryProtocol.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 				7F301C6C003059FC5E08752B /* Info.plist */,
 				4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */,
 				ED26D74873489593DA42A67F /* PickEmRelease.entitlements */,
+				43B6AE801EA0BDB3350016E5 /* Assets.xcassets */,
 				84B19E33B5BC2FB8D2C06DB7 /* App */,
 				69D7B4B8D16E3286D83F01B3 /* Domain */,
 				AC89C020F616C135D5EF2E0C /* DTOs */,
@@ -579,6 +582,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA160FC92FD9C11A00C5B92D /* GoogleService-Info.plist in Resources */,
+				CBA3F3A770BFA9E91821AD74 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
