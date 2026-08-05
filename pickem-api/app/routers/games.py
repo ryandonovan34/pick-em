@@ -28,10 +28,10 @@ from app.schemas.game import AddGameToSlate, GameRead, WeekCreate, WeekRead
 from app.services.nfl_calendar import local_date, monday_of, nfl_week_number_and_label
 from app.services.odds import ingest_odds
 from app.services.scheduler import (
-    cancel_odds_refresh_for_slate,
+    cancel_odds_refresh_for_game,
     cancel_pick_reminders,
     cancel_slate_admin_reminder,
-    schedule_odds_refresh_for_slate,
+    schedule_odds_refresh_for_game,
     schedule_pick_reminders,
     schedule_slate_admin_reminder,
 )
@@ -292,7 +292,7 @@ def add_game_to_slate(
 
     schedule_pick_reminders(game.id, group_id, ensure_utc(game.kickoff_at), team_names)
     schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
-    schedule_odds_refresh_for_slate(week_id, game.sport, first_kickoff)
+    schedule_odds_refresh_for_game(game.id, game.sport, ensure_utc(game.kickoff_at))
 
     week = session.get(Week, week_id)
     members_with_tokens = session.exec(
@@ -346,19 +346,19 @@ def remove_game_from_slate(
             detail="Cannot remove a game that has already kicked off.",
         )
 
-    sport = game_to_remove.sport
     session.delete(slate_game)
     session.commit()
     cancel_pick_reminders(game_id)
+    # Each slate game has its own pre-kickoff odds refresh now (see
+    # add_game_to_slate) — removing one doesn't affect any other game's job.
+    cancel_odds_refresh_for_game(game_id)
 
     remaining = _slate_games(week_id, session)
     if remaining:
         first_kickoff = min(ensure_utc(g.kickoff_at) for g in remaining)
         schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
-        schedule_odds_refresh_for_slate(week_id, sport, first_kickoff)
     else:
         cancel_slate_admin_reminder(week_id)
-        cancel_odds_refresh_for_slate(week_id)
 
 
 # ── Available odds ────────────────────────────────────────────────────────────

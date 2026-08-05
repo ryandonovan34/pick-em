@@ -90,33 +90,37 @@ def cancel_slate_admin_reminder(week_id: uuid.UUID) -> None:
         scheduler.remove_job(job_id)
 
 
-def schedule_odds_refresh_for_slate(
-    week_id: uuid.UUID,
+def schedule_odds_refresh_for_game(
+    game_id: uuid.UUID,
     sport: str,
-    first_kickoff_at: datetime,
+    kickoff_at: datetime,
 ) -> None:
     """
-    Schedule a one-time odds refresh 3 hours before the first kickoff of a slate.
-    Replaces any existing job for this week so fire time stays current as games change.
-    No-op if ODDS_API_KEY is not configured.
+    Schedule a one-time odds refresh 3 hours before THIS game's own kickoff —
+    not just the first game of its slate. A slate can span Thursday through
+    Monday; a refresh anchored only to the earliest game left the later
+    games' spreads relying solely on the 24h interval job, which could be
+    up to a day stale by the time they actually kick off. Replaces any
+    existing job for this game so fire time stays current if the game's
+    kickoff changes. No-op if ODDS_API_KEY is not configured.
     """
     from app.config import settings
     if not settings.ODDS_API_KEY:
         return
-    fire_at = max(first_kickoff_at - timedelta(hours=3), datetime.now(timezone.utc))
+    fire_at = max(kickoff_at - timedelta(hours=3), datetime.now(timezone.utc))
     scheduler.add_job(
         _refresh_sport_job,
         "date",
         run_date=fire_at,
-        id=f"odds_refresh_slate_{week_id}",
+        id=f"odds_refresh_game_{game_id}",
         replace_existing=True,
         kwargs={"sport": sport},
     )
-    logger.info("Odds refresh for slate %s scheduled at %s", week_id, fire_at)
+    logger.info("Odds refresh for game %s scheduled at %s", game_id, fire_at)
 
 
-def cancel_odds_refresh_for_slate(week_id: uuid.UUID) -> None:
-    job_id = f"odds_refresh_slate_{week_id}"
+def cancel_odds_refresh_for_game(game_id: uuid.UUID) -> None:
+    job_id = f"odds_refresh_game_{game_id}"
     if scheduler.get_job(job_id):
         scheduler.remove_job(job_id)
 
