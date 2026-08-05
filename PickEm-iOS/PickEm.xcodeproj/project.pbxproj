@@ -112,6 +112,7 @@
 		47ADD3DB80E2599CBFF4036E /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkServiceTests.swift; sourceTree = "<group>"; };
 		4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PickEm.entitlements; sourceTree = "<group>"; };
+		ED26D74873489593DA42A67F /* PickEmRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PickEmRelease.entitlements; sourceTree = "<group>"; };
 		4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateViewModelTests.swift; sourceTree = "<group>"; };
 		5854F0C060B472B83CBA5E75 /* StandingDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingDTO.swift; sourceTree = "<group>"; };
 		58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRepositoryProtocol.swift; sourceTree = "<group>"; };
@@ -214,6 +215,7 @@
 			children = (
 				7F301C6C003059FC5E08752B /* Info.plist */,
 				4ADA27A44C4EFB00EC92776A /* PickEm.entitlements */,
+				ED26D74873489593DA42A67F /* PickEmRelease.entitlements */,
 				84B19E33B5BC2FB8D2C06DB7 /* App */,
 				69D7B4B8D16E3286D83F01B3 /* Domain */,
 				AC89C020F616C135D5EF2E0C /* DTOs */,
@@ -1009,7 +1011,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = PickEm/PickEm.entitlements;
+				CODE_SIGN_ENTITLEMENTS = PickEm/PickEmRelease.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = WVZ32CQH5A;
 				INFOPLIST_FILE = PickEm/Info.plist;
