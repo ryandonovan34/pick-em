@@ -182,7 +182,14 @@ def _send_pick_reminders(
     team_names: str,
     minutes: int,
 ) -> None:
-    """Look up group members who haven't picked yet and send them a reminder."""
+    """
+    Remind every group member as kickoff approaches — including members who
+    already picked. Lines can move between when someone picks and kickoff,
+    and grading uses whatever spread is on the Game row at kickoff (there's
+    no spread-at-pick-time snapshot), so an already-picked member still
+    benefits from a nudge to come back and re-check the line before it's
+    too late to change their mind.
+    """
     from app.database import engine
     from app.models import GroupMember, Pick, User
     from sqlmodel import Session, select
@@ -195,6 +202,8 @@ def _send_pick_reminders(
         ).all()
 
         for member in members:
+            if not member.fcm_token:
+                continue
             already_picked = session.exec(
                 select(Pick).where(
                     Pick.user_id == member.id,
@@ -202,8 +211,10 @@ def _send_pick_reminders(
                     Pick.group_id == group_id,
                 )
             ).first()
-            if already_picked is None and member.fcm_token:
+            if already_picked is None:
                 notifications.send_pick_reminder(member.fcm_token, team_names, minutes)
+            else:
+                notifications.send_line_check_reminder(member.fcm_token, team_names, minutes)
 
 
 def _send_slate_admin_reminder(group_id: uuid.UUID) -> None:

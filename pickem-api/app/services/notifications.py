@@ -72,6 +72,18 @@ def send_pick_reminder(fcm_token: str, team_names: str, minutes_until_kickoff: i
     })
 
 
+def send_line_check_reminder(fcm_token: str, team_names: str, minutes_until_kickoff: int) -> None:
+    """Sent to members who've already picked — lines can move between when
+    they picked and kickoff, so they get the same cadence of reminders as
+    everyone else, just with copy that assumes a pick already exists."""
+    _send(fcm_token, {
+        "notification": {
+            "title": "Line check",
+            "body": f"{team_names} kicks off in {minutes_until_kickoff} minutes — the line may have moved, double-check your pick.",
+        },
+    })
+
+
 def send_slate_ready(fcm_tokens: list[str], group_name: str, week_label: str) -> None:
     for token in fcm_tokens:
         _send(token, {
