@@ -104,6 +104,16 @@ def send_game_added(fcm_tokens: list[str], group_name: str, week_label: str, awa
         })
 
 
+def send_game_removed(fcm_tokens: list[str], group_name: str, week_label: str, away_team: str, home_team: str) -> None:
+    for token in fcm_tokens:
+        _send(token, {
+            "notification": {
+                "title": f"{group_name} — game removed",
+                "body": f"{away_team} at {home_team} has been removed from {week_label}. Any pick you made on it no longer counts.",
+            },
+        })
+
+
 def send_slate_reminder_to_admin(fcm_token: str, group_name: str) -> None:
     _send(fcm_token, {
         "notification": {

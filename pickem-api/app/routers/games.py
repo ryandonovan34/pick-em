@@ -360,6 +360,21 @@ def remove_game_from_slate(
     else:
         cancel_slate_admin_reminder(week_id)
 
+    week = session.get(Week, week_id)
+    members_with_tokens = session.exec(
+        select(User)
+        .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
+        .where(
+            GroupMember.group_id == group_id,
+            User.fcm_token.isnot(None),  # type: ignore[union-attr]
+            User.id != current_user.id,
+        )
+    ).all()
+    tokens = [m.fcm_token for m in members_with_tokens if m.fcm_token]
+    if tokens and week:
+        from app.services.notifications import send_game_removed
+        send_game_removed(tokens, group.name, week.label, game_to_remove.away_team, game_to_remove.home_team)
+
 
 # ── Available odds ────────────────────────────────────────────────────────────
 
