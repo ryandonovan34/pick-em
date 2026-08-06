@@ -12,6 +12,12 @@ final class NotificationService: NSObject {
     private var authRepository: (any AuthRepositoryProtocol)?
     private let cacheService: LocalCacheService
     private let logger = Logger(subsystem: "com.pickem", category: "Notifications")
+    /// Cached from ③ (MessagingDelegate) so ⑤ can re-upload without re-asking
+    /// Firebase for a token — Messaging.token(completion:) requires apnsToken
+    /// to already be set, which races with ⑤ firing (e.g. relaunching while
+    /// already logged in: the authenticated screen appears, and its .task
+    /// fires, before the async APNs handshake in ① has completed).
+    private var lastKnownFCMToken: String?
 
     init(authRepository: any AuthRepositoryProtocol, cacheService: LocalCacheService) {
         self.authRepository = authRepository
@@ -53,7 +59,8 @@ final class NotificationService: NSObject {
             logger.warning("③ MessagingDelegate fired with a nil FCM token.")
             return
         }
-        logger.debug("③ Received FCM registration token: \(token, privacy: .private). Uploading...")
+        logger.debug("③ Received FCM registration token: \(token, privacy: .private). Caching + uploading...")
+        lastKnownFCMToken = token
         uploadFCMToken(token)
     }
 
@@ -78,21 +85,20 @@ final class NotificationService: NSObject {
     /// header, the backend 401s, and the failure above self-explains why.
     /// Called whenever the authenticated main content appears (RootView) —
     /// covers that race and self-heals any other reason a prior upload failed.
+    ///
+    /// Re-uploads the CACHED token from ③ rather than re-querying Firebase:
+    /// Messaging.token(completion:) requires apnsToken to already be set, and
+    /// on a relaunch where the user's already logged in, this can fire before
+    /// ①'s async APNs handshake completes — Firebase docs confirm ③ fires on
+    /// every app startup regardless, so if nothing's cached yet, ③ will
+    /// deliver (and upload, now that we're authenticated) shortly on its own.
     func uploadCurrentTokenIfAvailable() {
-        logger.debug("⑤ Authenticated screen appeared — fetching current FCM token to (re-)upload...")
-        Messaging.messaging().token { [weak self] token, error in
-            if let error {
-                self?.logger.error("⑤ Messaging.token(completion:) failed: \(error.localizedDescription, privacy: .public)")
-                return
-            }
-            guard let token else {
-                self?.logger.warning("⑤ Messaging.token(completion:) returned no token and no error.")
-                return
-            }
-            Task { @MainActor in
-                self?.uploadFCMToken(token)
-            }
+        guard let token = lastKnownFCMToken else {
+            logger.debug("⑤ Authenticated screen appeared, but no FCM token cached yet — APNs/Firebase handshake likely still in flight. ③ will upload it directly once it arrives.")
+            return
         }
+        logger.debug("⑤ Authenticated screen appeared — re-uploading cached FCM token...")
+        uploadFCMToken(token)
     }
 
     /// Handle a silent FCM data push. Invalidates the relevant cache scope.
