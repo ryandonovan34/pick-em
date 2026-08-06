@@ -34,6 +34,7 @@ private struct AuthGate: View {
             }
         }
         .task { await authViewModel.fetchCurrentUser() }
+        .task { dependencies.notificationService.uploadCurrentTokenIfAvailable() }
     }
 }
 

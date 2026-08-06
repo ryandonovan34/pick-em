@@ -34,6 +34,24 @@ final class NotificationService: NSObject {
         }
     }
 
+    /// Proactively re-upload the current FCM token. Notification permission is
+    /// requested unconditionally at app launch (PickEmApp), independent of auth
+    /// state — on a fresh install the APNs/FCM handshake can complete in under a
+    /// second, well before a human finishes the login/register form, so
+    /// MessagingDelegate can hand back a token while tokenStore has no access
+    /// token yet. uploadFCMToken's PUT then goes out with no Authorization
+    /// header, the backend 401s, and `try?` swallows it silently with no retry.
+    /// Called whenever the authenticated main content appears (RootView) —
+    /// covers that race and self-heals any other reason a prior upload failed.
+    func uploadCurrentTokenIfAvailable() {
+        Messaging.messaging().token { [weak self] token, error in
+            guard let token, error == nil else { return }
+            Task { @MainActor in
+                self?.uploadFCMToken(token)
+            }
+        }
+    }
+
     /// Handle a silent FCM data push. Invalidates the relevant cache scope.
     @discardableResult
     func handleSilentPush(_ userInfo: [AnyHashable: Any]) -> CacheScope? {
