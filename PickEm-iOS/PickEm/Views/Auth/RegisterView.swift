@@ -70,7 +70,14 @@ struct RegisterView: View {
                             text: $confirmPassword,
                             prompt: Text("Confirm password").foregroundStyle(AdaptiveColor.peOutline)
                         )
-                        .textContentType(.password)
+                        // Deliberately no textContentType: SwiftUI's SecureField doesn't
+                        // reliably trigger the real "Suggest Strong Password" UI on the
+                        // Password field above (a known framework limitation), so pairing
+                        // this field as .newPassword just reintroduces the AutoFill sync/
+                        // clearing loop, and .password surfaces an unrelated OLD saved
+                        // credential — either way, actively misleading for a field whose
+                        // whole purpose is confirming what was just typed above.
+                        .textContentType(nil)
                         .peFieldStyle()
 
                         if passwordMismatch {
