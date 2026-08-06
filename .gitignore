@@ -14,6 +14,8 @@
 # MCP config (personal/sensitive)
 .mcp.json
 
-# Firebase
+# Firebase — service-account.json is a server-side secret (FCM sender
+# credentials) and must stay out of git. GoogleService-Info.plist is a
+# client-side config, not a secret (Google's own docs say it's fine to
+# commit) — Xcode Cloud and any fresh clone need it to build.
 service-account.json
-GoogleService-Info.plist
