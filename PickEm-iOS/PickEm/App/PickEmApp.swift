@@ -49,7 +49,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        // Push notifications unavailable on this device/build — non-fatal.
+        Task { @MainActor in
+            notificationService?.handleAPNSRegistrationFailure(error)
+        }
     }
 
     func application(
@@ -66,9 +68,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
 extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        guard let fcmToken else { return }
         Task { @MainActor in
-            notificationService?.uploadFCMToken(fcmToken)
+            notificationService?.handleFCMRegistrationToken(fcmToken)
         }
     }
 }
