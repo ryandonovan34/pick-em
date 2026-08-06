@@ -70,7 +70,7 @@ struct RegisterView: View {
                             text: $confirmPassword,
                             prompt: Text("Confirm password").foregroundStyle(AdaptiveColor.peOutline)
                         )
-                        .textContentType(.newPassword)
+                        .textContentType(.password)
                         .peFieldStyle()
 
                         if passwordMismatch {
