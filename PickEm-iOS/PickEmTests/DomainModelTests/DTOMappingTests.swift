@@ -66,6 +66,39 @@ final class DTOMappingTests: XCTestCase {
         XCTAssertFalse(makePickDTO(isForfeit: false).toDomain().isForfeit)
     }
 
+    // MARK: - PickHistoryEntryDTO
+
+    func testPickHistoryEntryDTO_mapsToDomain() {
+        let dto = PickHistoryEntryDTO(
+            pickID: "p1", gameID: "g1", weekNumber: 9, weekLabel: "Week 9",
+            homeTeam: "Kansas City Chiefs", awayTeam: "Las Vegas Raiders",
+            pickedTeam: "Kansas City Chiefs", favoriteTeam: "Kansas City Chiefs",
+            spread: -7.5, kickoffAt: Date(),
+            isSuperdog: false, isForfeit: false, result: "win",
+            homeScore: 27, awayScore: 14
+        )
+        let entry = dto.toDomain()
+        XCTAssertEqual(entry.pickID, "p1")
+        XCTAssertEqual(entry.weekLabel, "Week 9")
+        XCTAssertEqual(entry.result, .win)
+        XCTAssertTrue(entry.pickedFavorite)
+        XCTAssertEqual(entry.underdogTeam, "Las Vegas Raiders")
+    }
+
+    func testPickHistoryEntryDTO_unknownResult_fallsBackToPending() {
+        let dto = PickHistoryEntryDTO(
+            pickID: "p1", gameID: "g1", weekNumber: 9, weekLabel: "Week 9",
+            homeTeam: "Kansas City Chiefs", awayTeam: "Las Vegas Raiders",
+            pickedTeam: "Las Vegas Raiders", favoriteTeam: "Kansas City Chiefs",
+            spread: -7.5, kickoffAt: Date(),
+            isSuperdog: true, isForfeit: false, result: "garbage",
+            homeScore: nil, awayScore: nil
+        )
+        let entry = dto.toDomain()
+        XCTAssertEqual(entry.result, .pending)
+        XCTAssertFalse(entry.pickedFavorite)
+    }
+
     // MARK: - StandingDTO
 
     func testStandingDTO_mapsToDomain() {

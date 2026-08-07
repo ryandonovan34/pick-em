@@ -1,6 +1,6 @@
 import Foundation
 
-struct Standing: Identifiable, Equatable, Codable {
+struct Standing: Identifiable, Equatable, Hashable, Codable {
     let userID: String
     let groupID: String
     let displayName: String

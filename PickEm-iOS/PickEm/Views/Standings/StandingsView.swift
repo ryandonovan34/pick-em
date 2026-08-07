@@ -39,13 +39,15 @@ struct StandingsView: View {
         return List {
             ForEach(rows.indices, id: \.self) { index in
                 let standing = rows[index]
-                StandingRow(
-                    rank: index + 1,
-                    standing: standing,
-                    isCurrentUser: standing.userID == currentUserID,
-                    superdogsEnabled: viewModel.group.superdogsEnabled,
-                    superdogsPerUser: viewModel.group.superdogsPerUser
-                )
+                NavigationLink(value: standing) {
+                    StandingRow(
+                        rank: index + 1,
+                        standing: standing,
+                        isCurrentUser: standing.userID == currentUserID,
+                        superdogsEnabled: viewModel.group.superdogsEnabled,
+                        superdogsPerUser: viewModel.group.superdogsPerUser
+                    )
+                }
             }
         }
         .listStyle(.automatic)

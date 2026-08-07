@@ -47,6 +47,16 @@ struct GroupDetailView: View {
                 pickViewModel: pickViewModel
             )
         }
+        .navigationDestination(for: Standing.self) { standing in
+            PlayerHistoryView(
+                viewModel: PlayerHistoryViewModel(
+                    group: group,
+                    userID: standing.userID,
+                    displayName: standing.displayName,
+                    pickRepository: dependencies.pickRepository
+                )
+            )
+        }
         .navigationTitle(group.name.uppercased())
         .navigationBarTitleDisplayMode(.inline)
         .peNavBar()

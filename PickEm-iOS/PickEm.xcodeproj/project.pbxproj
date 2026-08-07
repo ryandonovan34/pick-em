@@ -82,6 +82,11 @@
 		EB58AAA91964186AD7853EDD /* MockPickRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445897E4483DF71974A7EAEF /* MockPickRepositoryTests.swift */; };
 		EF4E8AEFB183C93C9CF1F644 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BA60BFB60C4A47206DCC46 /* User.swift */; };
 		F6B310FF01A72CA0918F7983 /* StandingsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */; };
+		17162D82575D6EB09BC23BE2 /* PlayerHistoryViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1100AD8F59B0C92F8AD05A /* PlayerHistoryViewModelTests.swift */; };
+		F85277FA7B6D219055263066 /* PickHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5538E77468E6EB6AFAF4DDAE /* PickHistoryEntry.swift */; };
+		D3AAB61C28108597DF28FEA5 /* PickHistoryEntryDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B0FCF91B69860E5B1EF1FB /* PickHistoryEntryDTO.swift */; };
+		1E31655AD859F94CD8098E69 /* PlayerHistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA678701962568A4E8C43DBE /* PlayerHistoryViewModel.swift */; };
+		F4EC1240F04FD9EE6B9E19DF /* PlayerHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B56E9F44AD2739161F67D2 /* PlayerHistoryView.swift */; };
 		F87C264949062A9D3744C79F /* MockGameRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0D57B7DD5109CC81C39B96 /* MockGameRepository.swift */; };
 		F87D820989961FDEF81BFCD0 /* LiveStandingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0615F37B2115B7019F360F /* LiveStandingsRepository.swift */; };
 		FC64006DAB36BBB322C59777 /* AuthRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF03B1FAFFA203217B64A3C4 /* AuthRepositoryProtocol.swift */; };
@@ -145,6 +150,11 @@
 		953D8913A11755BB70F23A8F /* StandingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsViewModel.swift; sourceTree = "<group>"; };
 		98F29AA2B2832F48974C7B20 /* Group.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Group.swift; sourceTree = "<group>"; };
 		997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsViewModelTests.swift; sourceTree = "<group>"; };
+		DE1100AD8F59B0C92F8AD05A /* PlayerHistoryViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHistoryViewModelTests.swift; sourceTree = "<group>"; };
+		5538E77468E6EB6AFAF4DDAE /* PickHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickHistoryEntry.swift; sourceTree = "<group>"; };
+		47B0FCF91B69860E5B1EF1FB /* PickHistoryEntryDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickHistoryEntryDTO.swift; sourceTree = "<group>"; };
+		CA678701962568A4E8C43DBE /* PlayerHistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHistoryViewModel.swift; sourceTree = "<group>"; };
+		54B56E9F44AD2739161F67D2 /* PlayerHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHistoryView.swift; sourceTree = "<group>"; };
 		9E71649EEEB1159560FF75E6 /* SlateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlateViewModel.swift; sourceTree = "<group>"; };
 		A1445D09848B29DF7277C421 /* PickViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickViewModelTests.swift; sourceTree = "<group>"; };
 		A49A48EF73265DF1DD72E13B /* Week.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Week.swift; sourceTree = "<group>"; };
@@ -259,6 +269,7 @@
 				3BBDF8492797B0BCEC000402 /* AuthViewModelTests.swift */,
 				2BB3CA37451BAFD26990BC5D /* GroupViewModelTests.swift */,
 				A1445D09848B29DF7277C421 /* PickViewModelTests.swift */,
+				DE1100AD8F59B0C92F8AD05A /* PlayerHistoryViewModelTests.swift */,
 				4E72998B64F4E335C6C2AAA7 /* SlateViewModelTests.swift */,
 				997F7059D61B3FE577A391FF /* StandingsViewModelTests.swift */,
 			);
@@ -381,6 +392,7 @@
 				8CAC68255CCA378A07701DE7 /* Game.swift */,
 				98F29AA2B2832F48974C7B20 /* Group.swift */,
 				DC883552248090EB5243E393 /* Pick.swift */,
+				5538E77468E6EB6AFAF4DDAE /* PickHistoryEntry.swift */,
 				FF0FB210A11F6FBFB01FD102 /* Standing.swift */,
 				67BA60BFB60C4A47206DCC46 /* User.swift */,
 				A49A48EF73265DF1DD72E13B /* Week.swift */,
@@ -413,6 +425,7 @@
 				6B9836E2342C79CCC13D00C2 /* AuthViewModel.swift */,
 				1DEF88BC8F88495A6E32879F /* GroupViewModel.swift */,
 				B040B6F9766D9B9B0BE0B55E /* PickViewModel.swift */,
+				CA678701962568A4E8C43DBE /* PlayerHistoryViewModel.swift */,
 				9E71649EEEB1159560FF75E6 /* SlateViewModel.swift */,
 				953D8913A11755BB70F23A8F /* StandingsViewModel.swift */,
 			);
@@ -448,6 +461,7 @@
 			children = (
 				83456E4A4FBD6F0A0520FEDE /* GameDTO.swift */,
 				7742863673DE58703A5BAD74 /* PickDTO.swift */,
+				47B0FCF91B69860E5B1EF1FB /* PickHistoryEntryDTO.swift */,
 				5854F0C060B472B83CBA5E75 /* StandingDTO.swift */,
 				7D35F07DDCAF0EB4D1E310E0 /* UserDTO.swift */,
 			);
@@ -457,6 +471,7 @@
 		B6A1B1150C67E07DD11C04A7 /* Standings */ = {
 			isa = PBXGroup;
 			children = (
+				54B56E9F44AD2739161F67D2 /* PlayerHistoryView.swift */,
 				12EC813DDF70DBC6EF723C4E /* StandingsView.swift */,
 			);
 			path = Standings;
@@ -631,10 +646,14 @@
 				831A440889EC9D02A04B7832 /* Pick.swift in Sources */,
 				2A0F6611AC7E9323F0C40C11 /* PickDTO.swift in Sources */,
 				CB4057A156705A23C3758C26 /* PickEmApp.swift in Sources */,
+				F85277FA7B6D219055263066 /* PickHistoryEntry.swift in Sources */,
+				D3AAB61C28108597DF28FEA5 /* PickHistoryEntryDTO.swift in Sources */,
 				A9451070C04871831F9D0713 /* PickRepositoryProtocol.swift in Sources */,
 				69D4AA893E1AFDC251B09A77 /* PickResult.swift in Sources */,
 				3E4BF7CE1100C20111A00069 /* PickSubmissionView.swift in Sources */,
 				75FB55A82769C07E395303B6 /* PickViewModel.swift in Sources */,
+				1E31655AD859F94CD8098E69 /* PlayerHistoryViewModel.swift in Sources */,
+				F4EC1240F04FD9EE6B9E19DF /* PlayerHistoryView.swift in Sources */,
 				9982E80B6E674C19B3A129AE /* RegisterView.swift in Sources */,
 				22134985D130995648A17DEC /* RepositoryError.swift in Sources */,
 				A7C8551F48442846F8C9195F /* RootView.swift in Sources */,
@@ -669,6 +688,7 @@
 				A21BFCA4C856333861CEDD31 /* SlateViewModelTests.swift in Sources */,
 				6C895703D680A4BD2DAC1C3F /* StandingModelTests.swift in Sources */,
 				F6B310FF01A72CA0918F7983 /* StandingsViewModelTests.swift in Sources */,
+				17162D82575D6EB09BC23BE2 /* PlayerHistoryViewModelTests.swift in Sources */,
 				3174255EDC7DAEF5F8FF37BB /* GroupModelTests.swift in Sources */,
 				1D88E327517D5926F3734C2F /* WeekModelTests.swift in Sources */,
 				46463A713A0C97CDF3EAC569 /* PickResultTests.swift in Sources */,
