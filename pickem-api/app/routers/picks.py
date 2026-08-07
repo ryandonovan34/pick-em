@@ -21,7 +21,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_session
 from app.models import Game, Group, GroupMember, Pick, SlateGame, User, Week
 from app.routers.groups import _require_member
-from app.schemas.pick import PickCreate, PickRead, PickUpdate
+from app.schemas.pick import PickCreate, PickHistoryEntry, PickRead, PickUpdate
 
 # Prefixed with /picks in main.py
 router = APIRouter()
@@ -196,6 +196,70 @@ def get_all_picks(
         )
     ).all()
     return list(picks)
+
+
+@group_picks_router.get(
+    "/groups/{group_id}/members/{user_id}/picks/history",
+    response_model=list[PickHistoryEntry],
+)
+def get_pick_history(
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[PickHistoryEntry]:
+    """
+    A group member's full history of GRADED picks (result != 'pending'),
+    ordered chronologically by kickoff — for verifying their win/loss record.
+    Any group member can view any other member's history (mirrors standings'
+    group-wide visibility, since this is fundamentally the receipts behind
+    that same leaderboard). Excludes pending picks: they haven't contributed
+    to the record yet, and since a game is only graded after it kicks off,
+    every entry here has already passed kickoff — no blind-pick filtering
+    needed (that rule only restricts pre-kickoff visibility).
+    """
+    _require_member(group_id, current_user, session)
+
+    target_membership = session.exec(
+        select(GroupMember).where(GroupMember.group_id == group_id, GroupMember.user_id == user_id)
+    ).first()
+    if target_membership is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User is not a member of this group.")
+
+    rows = session.exec(
+        select(Pick, Game, Week)
+        .join(Game, Game.id == Pick.game_id)  # type: ignore[arg-type]
+        .join(SlateGame, SlateGame.game_id == Game.id)  # type: ignore[arg-type]
+        .join(Week, Week.id == SlateGame.week_id)  # type: ignore[arg-type]
+        .where(
+            Pick.group_id == group_id,
+            Pick.user_id == user_id,
+            Week.group_id == group_id,
+            Pick.result != "pending",
+        )
+        .order_by(Game.kickoff_at)  # type: ignore[arg-type]
+    ).all()
+
+    return [
+        PickHistoryEntry(
+            pick_id=pick.id,
+            game_id=game.id,
+            week_number=week.week_number,
+            week_label=week.label,
+            home_team=game.home_team,
+            away_team=game.away_team,
+            picked_team=pick.picked_team,
+            favorite_team=game.favorite_team,
+            spread=game.spread,
+            kickoff_at=game.kickoff_at,
+            is_superdog=pick.is_superdog,
+            is_forfeit=pick.is_forfeit,
+            result=pick.result,
+            home_score=game.home_score,
+            away_score=game.away_score,
+        )
+        for pick, game, week in rows
+    ]
 
 
 @group_picks_router.get("/groups/{group_id}/weeks/{week_id}/picks", response_model=list[PickRead])

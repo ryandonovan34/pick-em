@@ -17,7 +17,6 @@ def _seed_group_and_game(
     client: TestClient,
     session: Session,
     spread: float = -7.5,
-    kickoff_offset_hours: float = 48,
     blind_picks: bool = False,
     superdogs_enabled: bool = True,
 ) -> tuple[dict, dict, dict]:
@@ -39,17 +38,12 @@ def _seed_group_and_game(
     assert group_resp.status_code == 201
     group = group_resp.json()
 
-    # starts_on must cover the mock game's kickoff (now + kickoff_offset_hours);
-    # WeekCreate snaps any date to the Monday of its containing week.
-    game_date = (datetime.now(timezone.utc) + timedelta(hours=kickoff_offset_hours)).date().isoformat()
-    week_resp = client.post(
-        f"/groups/{group['id']}/weeks", headers=headers,
-        json={"label": "Week 1", "starts_on": game_date},
-    )
-    assert week_resp.status_code == 201
-    week = week_resp.json()
-
-    # Seed a game directly into the pool via dev endpoint.
+    # Seed the game FIRST — /dev/mock-games decides the exact kickoff time
+    # (self-correcting to stay in the future regardless of what day of the
+    # week "now" happens to be) — then build the week's starts_on from the
+    # game's ACTUAL kickoff date, so the two are always consistent. Building
+    # them independently (both guessing "now + fixed offset") can land the
+    # game just outside the week's window depending on today's weekday.
     seed_resp = client.post("/dev/mock-games", json={
         "sport": "americanfootball_nfl",
         "week_label": "Week 1",
@@ -57,6 +51,14 @@ def _seed_group_and_game(
     })
     assert seed_resp.status_code == 201
     game_pool = seed_resp.json()[0]
+    kickoff = datetime.fromisoformat(game_pool["kickoff_at"].replace("Z", "+00:00"))
+
+    week_resp = client.post(
+        f"/groups/{group['id']}/weeks", headers=headers,
+        json={"label": "Week 1", "starts_on": kickoff.date().isoformat()},
+    )
+    assert week_resp.status_code == 201
+    week = week_resp.json()
 
     # Add to slate.
     add_resp = client.post(
@@ -148,15 +150,18 @@ class TestPickVisibility:
         })
         group = group_resp.json()
 
-        game_date = (datetime.now(timezone.utc) + timedelta(hours=48)).date().isoformat()
+        # Seed the game first, then build the week around its ACTUAL kickoff
+        # date — independently guessing "now + 48h" for both can land the
+        # game just outside the week's window depending on today's weekday.
+        seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})
+        game_pool = seed.json()[0]
+        game_date = datetime.fromisoformat(game_pool["kickoff_at"].replace("Z", "+00:00")).date().isoformat()
         week_resp = client.post(
             f"/groups/{group['id']}/weeks", headers=headers_a,
             json={"label": "W1", "starts_on": game_date},
         )
         week = week_resp.json()
 
-        seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})
-        game_pool = seed.json()[0]
         add = client.post(f"/groups/{group['id']}/weeks/{week['id']}/games", headers=headers_a,
                           json={"odds_api_id": game_pool["odds_api_id"]})
         game = add.json()
@@ -186,15 +191,18 @@ class TestPickVisibility:
             "blind_picks": False, "superdogs_enabled": False, "superdogs_per_user": 3,
         })
         group = group_resp.json()
-        game_date = (datetime.now(timezone.utc) + timedelta(hours=48)).date().isoformat()
+        # Seed the game first, then build the week around its ACTUAL kickoff
+        # date — independently guessing "now + 48h" for both can land the
+        # game just outside the week's window depending on today's weekday.
+        seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})
+        game_pool = seed.json()[0]
+        game_date = datetime.fromisoformat(game_pool["kickoff_at"].replace("Z", "+00:00")).date().isoformat()
         week_resp = client.post(
             f"/groups/{group['id']}/weeks", headers=headers_a,
             json={"label": "W1", "starts_on": game_date},
         )
         week = week_resp.json()
 
-        seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": "W1", "game_count": 1})
-        game_pool = seed.json()[0]
         add = client.post(f"/groups/{group['id']}/weeks/{week['id']}/games", headers=headers_a,
                           json={"odds_api_id": game_pool["odds_api_id"]})
         game = add.json()

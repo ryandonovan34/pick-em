@@ -161,6 +161,15 @@ def _build_mock_games(
     selected = _select_templates(templates, game_count, template_offset)
     anchor = base_kickoff_at or (datetime.now(timezone.utc) + timedelta(hours=48))
     thursday = thursday_of(anchor.date())
+    # thursday_of snaps backward to the Thursday on/before anchor's date,
+    # which can land before "now" even when anchor itself is in the future
+    # (e.g. it's Friday and anchor is this Sunday — that week's Thursday
+    # already passed). Roll forward a week so every generated slot,
+    # including the earliest (Thursday night), is guaranteed to still be
+    # in the future — callers of /dev/mock-games always expect an addable,
+    # not-yet-kicked-off game.
+    if weekly_slot_kickoff(thursday, 0, 1) <= datetime.now(timezone.utc):
+        thursday += timedelta(days=7)
 
     games: list[Game] = []
     for i, template in enumerate(selected):

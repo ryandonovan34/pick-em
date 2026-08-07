@@ -32,14 +32,18 @@ def _setup_group_with_member(client: TestClient) -> tuple[dict, dict, dict]:
 
 
 def _create_week_and_seed_game(client: TestClient, admin_headers: dict, group: dict, label: str = "W1") -> tuple[dict, dict]:
-    game_date = (datetime.now(timezone.utc) + timedelta(hours=48)).date().isoformat()
+    # Seed the games first, then build the week around their ACTUAL kickoff
+    # date — independently guessing "now + 48h" for both can land a game
+    # just outside the week's window depending on today's weekday.
+    seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": label, "game_count": 2})
+    games_pool = seed.json()
+    game_date = datetime.fromisoformat(games_pool[0]["kickoff_at"].replace("Z", "+00:00")).date().isoformat()
     week_resp = client.post(
         f"/groups/{group['id']}/weeks", headers=admin_headers,
         json={"label": label, "starts_on": game_date},
     )
     week = week_resp.json()
-    seed = client.post("/dev/mock-games", json={"sport": "americanfootball_nfl", "week_label": label, "game_count": 2})
-    return week, seed.json()
+    return week, games_pool
 
 
 def test_adding_first_game_sends_slate_ready_to_member_not_admin(client: TestClient, monkeypatch):
