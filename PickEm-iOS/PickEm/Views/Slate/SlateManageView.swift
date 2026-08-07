@@ -110,6 +110,9 @@ private struct ManageGameRow: View {
                 Text("\(game.awayTeam) @ \(game.homeTeam)")
                     .font(.subheadline)
                     .foregroundStyle(isLocked ? AdaptiveColor.peOnSurfaceVar : AdaptiveColor.peOnSurface)
+                Text(game.spreadDisplay)
+                    .font(.caption.bold())
+                    .foregroundStyle(isLocked ? AdaptiveColor.peOnSurfaceVar : AdaptiveColor.pePrimary)
                 HStack(spacing: 4) {
                     if isLocked {
                         Image(systemName: "lock.fill")
