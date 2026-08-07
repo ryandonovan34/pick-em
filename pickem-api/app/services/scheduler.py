@@ -150,11 +150,11 @@ def _schedule_results_fetch() -> None:
     scheduler.add_job(
         _fetch_and_process_results,
         "interval",
-        minutes=15,
+        minutes=30,
         id="results_fetch",
         replace_existing=True,
     )
-    logger.info("Results fetch scheduled (every 15 min).")
+    logger.info("Results fetch scheduled (every 30 min).")
 
 
 # ── Internal job functions ────────────────────────────────────────────────────
@@ -178,6 +178,22 @@ def _refresh_sport_job(sport: str) -> None:
         ingest_odds(sport)
     except Exception:
         logger.exception("Odds refresh failed for sport=%s", sport)
+
+
+def _relevant_api_sport_key(kickoff_at: datetime) -> str:
+    """Which real Odds API key a game's results actually live under, based
+    on its own kickoff date — used by _fetch_and_process_results to avoid
+    always querying both the regular-season+playoffs and separate preseason
+    scores endpoints on every poll regardless of whether any preseason game
+    is actually pending (which wastes half of every poll's Odds API credit
+    budget for the ~5 months/year with no pending preseason games — i.e.
+    almost the entire season)."""
+    from app.services.nfl_calendar import local_date, nfl_season_start, season_year_for_date
+    from app.utils import ensure_utc
+
+    kickoff_date = local_date(ensure_utc(kickoff_at))
+    season_start = nfl_season_start(season_year_for_date(kickoff_date))
+    return "americanfootball_nfl_preseason" if kickoff_date < season_start else "americanfootball_nfl"
 
 
 def _send_pick_reminders(
@@ -242,7 +258,7 @@ def _fetch_and_process_results() -> None:
     """
     from app.database import engine
     from app.models import Game, Group, GroupMember, User, Week
-    from app.services.odds import fetch_scores, odds_api_sport_keys
+    from app.services.odds import fetch_scores
     from app.services.results import process_game_result
     from app.utils import utc_now
     from sqlmodel import Session, select
@@ -264,13 +280,11 @@ def _fetch_and_process_results() -> None:
         if not pending:
             return
 
-        # Fetch scores for each real Odds API key mapped to a pending game's
-        # (internal) sport — e.g. 'americanfootball_nfl' expands to both the
-        # regular-season+playoffs and the separate preseason scores endpoint,
-        # since Game.sport is normalized to the internal key regardless of
-        # which one a game's odds actually came from (see odds.py::ingest_odds).
+        # Fetch scores only from the real Odds API key each pending game
+        # actually needs (see _relevant_api_sport_key) — NOT a blind
+        # expansion to every key ever mapped to 'americanfootball_nfl'.
         score_map: dict[str, tuple[int, int]] = {}
-        api_sport_keys = {key for g in pending for key in odds_api_sport_keys(g.sport)}
+        api_sport_keys = {_relevant_api_sport_key(g.kickoff_at) for g in pending}
         for api_sport_key in api_sport_keys:
             try:
                 for s in fetch_scores(api_sport_key):

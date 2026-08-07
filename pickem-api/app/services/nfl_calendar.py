@@ -42,6 +42,15 @@ def nfl_season_start(season_year: int) -> date:
     return d
 
 
+def season_year_for_date(d: date) -> int:
+    """The NFL season_year a given date falls within. A season that opens
+    in September of year Y runs through the Super Bowl in February of year
+    Y+1, so any January/February date belongs to the PREVIOUS calendar
+    year's season_year. Used to classify a raw date (e.g. a game's kickoff)
+    without already knowing which group/season it's associated with."""
+    return d.year if d.month >= 3 else d.year - 1
+
+
 def label_for_week_number(week_number: int) -> str:
     if week_number < 0:
         return f"Preseason Week {week_number + 5}"

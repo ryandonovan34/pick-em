@@ -138,3 +138,39 @@ class TestPerGameOddsRefresh:
         assert scheduler.scheduler.get_job(f"odds_refresh_game_{game_b}") is not None
 
         scheduler.cancel_odds_refresh_for_game(game_b)  # cleanup
+
+
+class TestRelevantApiSportKey:
+    """
+    Regression: _fetch_and_process_results used to always query both the
+    regular-season+playoffs and separate preseason scores endpoints on
+    every poll, regardless of whether any preseason game was actually
+    pending — wasting half of every poll's Odds API credit budget for the
+    ~5 months/year with no pending preseason games (i.e. almost the whole
+    season). _relevant_api_sport_key classifies a single game's kickoff so
+    only the endpoint it's actually under gets queried.
+    """
+
+    def test_preseason_kickoff_maps_to_preseason_key(self):
+        # 2026 season opens 2026-09-10 per NFL_SEASON_STARTS.
+        kickoff = datetime(2026, 8, 6, 20, 15, tzinfo=timezone.utc)
+        assert scheduler._relevant_api_sport_key(kickoff) == "americanfootball_nfl_preseason"
+
+    def test_regular_season_kickoff_maps_to_regular_key(self):
+        kickoff = datetime(2026, 9, 13, 17, 0, tzinfo=timezone.utc)
+        assert scheduler._relevant_api_sport_key(kickoff) == "americanfootball_nfl"
+
+    def test_january_playoff_kickoff_maps_to_regular_key(self):
+        # Playoffs for the 2026 season happen in Jan 2027 — must still
+        # resolve against the 2026 season's start, not a nonexistent 2027 one.
+        kickoff = datetime(2027, 1, 18, 20, 0, tzinfo=timezone.utc)
+        assert scheduler._relevant_api_sport_key(kickoff) == "americanfootball_nfl"
+
+    def test_late_night_utc_kickoff_near_season_boundary_uses_et_calendar_date(self):
+        # 2026-09-10 02:00 UTC is technically "Sept 10" by raw UTC .date(),
+        # which would wrongly read as on/after the Sept 10 season opener —
+        # but it's still 2026-09-09 22:00 ET (the night before), so this
+        # must classify as preseason. Proves local_date (ET) is used, not
+        # a naive raw-UTC date comparison.
+        kickoff = datetime(2026, 9, 10, 2, 0, tzinfo=timezone.utc)
+        assert scheduler._relevant_api_sport_key(kickoff) == "americanfootball_nfl_preseason"
