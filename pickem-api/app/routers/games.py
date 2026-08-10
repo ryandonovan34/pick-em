@@ -61,13 +61,12 @@ def _week_end(week: Week, session: Session) -> Optional[date]:
     always runs into the next ISO week for its Monday game) — UNLESS the
     next standard week (by week_number, within the same group) starts more
     than 7 days later, in which case the window extends up to the day
-    before that next week starts. This only changes anything for Preseason
-    Week 1, whose real-world window is wider than 7 days (the Hall of Fame
-    Game kicks off ~5 weeks before the season, a full week ahead of the
-    other 3 preseason weeks' even 7-day cadence — see
-    auto_slate.create_standard_season_weeks); every other week's next
-    sibling is exactly 7 days later, so max() below just reduces to the
-    plain +7 fallback for them."""
+    before that next week starts. Every standard week (regular season,
+    playoffs, and — as of auto_slate.create_standard_season_weeks's uniform
+    7-day preseason cadence — all 4 preseason weeks too) has its next
+    sibling exactly 7 days later, so max() below reduces to the plain +7
+    fallback for all of them; this only matters as a safety net for
+    manually-created weeks with an irregular gap to whatever's next."""
     if week.ends_on:
         return week.ends_on
     if week.starts_on is None:

@@ -107,27 +107,49 @@ class TestCreateStandardSeasonWeeksNeverAddsGames:
             assert w.ends_on is None
         assert [w.starts_on for w in preseason] == sorted(w.starts_on for w in preseason)
 
-    def test_preseason_week_1_starts_generously_early_for_the_hall_of_fame_game(self, mem_session: Session):
+    def test_preseason_week_1_starts_5_weeks_out_for_the_hall_of_fame_game(self, mem_session: Session):
         # The real Hall of Fame Game kicks off ~5 weeks before the season
-        # opener — a full week earlier than Preseason Weeks 2-4's even
-        # 7-day cadence (which only reaches 4 weeks back). Week 1's anchor
-        # must be wide enough that a game 5 weeks out still falls on or
-        # after its starts_on.
+        # opener — a full week earlier than the rest of the league's first
+        # preseason slate (4 weeks out). Verified against actual 2026 Odds
+        # API data: HOF Game kicked off exactly 5 weeks (35 days) before
+        # the Sept 10 opener.
         group = _make_group(mem_session, include_preseason=True)
         weeks = create_standard_season_weeks(group, mem_session)
         week1 = next(w for w in weeks if w.week_number == -4)
         season_start = nfl_season_start(group.season_year)
-        assert week1.starts_on <= season_start - timedelta(weeks=5)
+        assert week1.starts_on == season_start - timedelta(weeks=5)
 
-    def test_preseason_week_4_ends_the_day_before_the_season_opens(self, mem_session: Session):
+    def test_preseason_week_1_does_not_swallow_week_2s_real_games(self, mem_session: Session):
+        # Regression: Week 1 used to be widened all the way to the day
+        # before Week 2 started (to catch the early HOF outlier), which
+        # meant the ENTIRE next real preseason week's games — 4 weeks out,
+        # a totally normal, non-outlier batch — also fell inside Week 1's
+        # window instead of Week 2's. Confirmed against real Odds API data:
+        # a batch of 16 games kicked off exactly 4 weeks before the opener
+        # (the earliest of them lands exactly on the Week1/Week2 boundary
+        # day, which — same as every other standard week's boundary — is
+        # intentionally inclusive on both sides, letting the admin decide;
+        # what matters is Week 1's window doesn't reach PAST that boundary).
+        group = _make_group(mem_session, include_preseason=True)
+        weeks = create_standard_season_weeks(group, mem_session)
+        week1 = next(w for w in weeks if w.week_number == -4)
+        week2 = next(w for w in weeks if w.week_number == -3)
+        season_start = nfl_season_start(group.season_year)
+        real_week_2_game_date = season_start - timedelta(weeks=4)
+        week1_fallback_end = week1.starts_on + timedelta(days=7)
+        assert real_week_2_game_date == week1_fallback_end
+        assert real_week_2_game_date == week2.starts_on
+
+    def test_preseason_week_4_ends_a_week_before_the_season_opens(self, mem_session: Session):
+        # Real NFL preseason ends about 10-11 days before the opener, not
+        # the week immediately before it — there's a genuine gap with no
+        # preseason games in it. Week 4 (2 weeks out) + the standard 7-day
+        # fallback lands exactly 1 week before the opener, matching that.
         group = _make_group(mem_session, include_preseason=True)
         weeks = create_standard_season_weeks(group, mem_session)
         week4 = next(w for w in weeks if w.week_number == -1)
         season_start = nfl_season_start(group.season_year)
-        # starts_on + 7 days (the standard-week fallback) must reach at
-        # least the day before the opener, or a real preseason Week 4 game
-        # right before final roster cuts would be wrongly rejected.
-        assert week4.starts_on + timedelta(days=7) >= season_start - timedelta(days=1)
+        assert week4.starts_on + timedelta(days=7) == season_start - timedelta(days=7)
 
     def test_no_games_attached_to_any_created_week(self, mem_session: Session):
         group = _make_group(mem_session, include_preseason=True)

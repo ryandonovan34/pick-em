@@ -158,27 +158,23 @@ def create_standard_season_weeks(group: Group, session: Session) -> list[Week]:
     season_start = nfl_season_start(group.season_year)
     weeks: list[Week] = []
     for week_number in _standard_season_week_numbers(group):
-        if week_number == -4:
-            # Preseason Week 1 is the odd one out: real NFL preseason opens
-            # with the Hall of Fame Game, played by just two teams roughly
-            # 5 weeks before the season opener — a full week earlier than
-            # the evenly-spaced 7-day cadence the other 3 preseason weeks
-            # follow (which starts 4 weeks/28 days out). Anchoring this
-            # week's starts_on 8 weeks back (instead of 4) gives a generous
-            # margin so that lone early game still falls inside this week's
-            # window; games.py::_week_end() extends this week's effective
-            # end up to the day before Preseason Week 2 starts (rather than
-            # the usual +7 fallback), so the wide gap is fully covered
-            # without needing an explicit ends_on here (which would make
-            # iOS render a raw date range instead of "Preseason Week 1").
-            starts_on = season_start - timedelta(weeks=8)
-        elif week_number < 0:
-            # Preseason Weeks 2-4 — clean 7-day buckets counting backward
-            # from the opener, matching nfl_week_number_and_label's
-            # classification, relying on the same +7-day fallback as a
-            # regular week (no explicit ends_on needed).
-            weeks_before_start = -week_number
-            starts_on = season_start - timedelta(days=weeks_before_start * 7)
+        if week_number < 0:
+            # 4 clean, uniform 7-day buckets counting backward from the
+            # opener — Preseason Week 1 starts 5 weeks out (not 4), because
+            # real NFL preseason opens with the Hall of Fame Game, played
+            # by just two teams a full week before the rest of the league's
+            # first preseason slate. Originally Week 1 started only 4 weeks
+            # out with its end widened all the way to Preseason Week 2's
+            # start to catch that early outlier — but that swallowed the
+            # ENTIRE next real preseason week's games into Week 1 too,
+            # since there was nothing narrowing the gap in between. Verified
+            # against the actual 2026 Odds API data: HOF Game kicked off
+            # Aug 6 (5 weeks/35 days before the Sept 10 opener), and the
+            # next real batch of 16 games kicked off Aug 13-16 (exactly 4
+            # weeks out) — a uniform 7-day cadence starting 5 weeks back
+            # cleanly separates them without any special-casing.
+            weeks_before_start = -week_number + 1
+            starts_on = season_start - timedelta(weeks=weeks_before_start)
         else:
             starts_on = monday_of(season_start + timedelta(weeks=week_number - 1))
         weeks.append(_get_or_create_week_row(
