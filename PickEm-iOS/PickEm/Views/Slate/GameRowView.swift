@@ -1,9 +1,19 @@
 import SwiftUI
 
+/// One group member's pick for a game, name-resolved for display.
+/// Visibility (blind-pick filtering) is already enforced server-side —
+/// this is exactly whatever the picks endpoint returned.
+struct MemberPickDisplay: Identifiable {
+    let pick: Pick
+    let displayName: String
+    var id: String { pick.id }
+}
+
 struct GameRowView: View {
     let game: Game
     let pick: Pick?
     let group: Group
+    var memberPicks: [MemberPickDisplay] = []
     let onPickTapped: () -> Void
 
     private var chipStyle: StatusChip.Style {
@@ -44,6 +54,9 @@ struct GameRowView: View {
                 }
                 spreadLine
                 pickRow
+                if !memberPicks.isEmpty {
+                    memberPicksSection
+                }
             }
             .padding(14)
         }
@@ -148,6 +161,23 @@ struct GameRowView: View {
             }
         }
     }
+
+    private var memberPicksSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(memberPicks) { entry in
+                HStack(spacing: 6) {
+                    Text(entry.displayName)
+                        .font(.peLabelSm())
+                        .foregroundStyle(AdaptiveColor.peOnSurfaceVar)
+                    Text(entry.pick.isForfeit ? "Missed Pick" : entry.pick.pickedTeam + (entry.pick.isSuperdog ? " ★" : ""))
+                        .font(.peLabelBold())
+                        .foregroundStyle(AdaptiveColor.peOnSurface)
+                    Spacer()
+                }
+            }
+        }
+        .padding(.top, 6)
+    }
 }
 
 // MARK: - Pick Badge
@@ -189,12 +219,18 @@ private struct PickBadge: View {
             game: MockData.games[0],
             pick: MockData.picks.first(where: { $0.gameID == "game-1" }),
             group: MockData.group,
+            memberPicks: MockData.picks
+                .filter { $0.gameID == "game-1" }
+                .map { MemberPickDisplay(pick: $0, displayName: $0.userID == MockData.currentUserID ? "Alice" : "Bob") },
             onPickTapped: {}
         )
         GameRowView(
             game: MockData.games[3],
             pick: MockData.picks.first(where: { $0.gameID == "game-4" }),
             group: MockData.group,
+            memberPicks: MockData.picks
+                .filter { $0.gameID == "game-4" }
+                .map { MemberPickDisplay(pick: $0, displayName: $0.userID == MockData.currentUserID ? "Alice" : "Bob") },
             onPickTapped: {}
         )
     }

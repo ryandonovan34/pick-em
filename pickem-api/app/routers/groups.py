@@ -14,10 +14,23 @@ from sqlmodel import Session, select
 
 from app.auth.dependencies import get_current_user
 from app.database import get_session
-from app.models import Group, GroupMember, User
+from app.models import Group, GroupMember, Standing, User
 from app.schemas.auth import GroupCreate, GroupRead, JoinGroupRequest
 
 router = APIRouter()
+
+
+def _create_standing_row(user: User, group: Group, session: Session) -> None:
+    """
+    A member's Standing row used to only get created the first time one of
+    their picks was graded (see results.py::_recompute_standing) — so a
+    brand-new member with zero picks had zero rows and simply didn't show
+    up on the leaderboard at all. Standing is membership structure, not a
+    byproduct of results processing (same reasoning as why weeks are
+    created eagerly at group-creation time, not reactively from odds data)
+    — every member should show at 0-0 the moment they join.
+    """
+    session.add(Standing(user_id=user.id, group_id=group.id, display_name=user.display_name))
 
 
 def _generate_join_code() -> str:
@@ -84,6 +97,7 @@ def create_group(
 
     # Admin is automatically a member.
     session.add(GroupMember(group_id=group.id, user_id=current_user.id))
+    _create_standing_row(current_user, group, session)
 
     # Weeks are calendar structure, not a byproduct of odds data — create the
     # full season's week containers now so the group never shows "no weeks"
@@ -144,6 +158,7 @@ def join_group(
         return group  # idempotent
 
     session.add(GroupMember(group_id=group.id, user_id=current_user.id))
+    _create_standing_row(current_user, group, session)
     session.commit()
     return group
 

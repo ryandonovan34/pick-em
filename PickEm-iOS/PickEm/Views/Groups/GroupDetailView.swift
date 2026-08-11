@@ -44,7 +44,8 @@ struct GroupDetailView: View {
             WeekDetailView(
                 weekID: week.id,
                 slateViewModel: slateViewModel,
-                pickViewModel: pickViewModel
+                pickViewModel: pickViewModel,
+                standingsViewModel: standingsViewModel
             )
         }
         .navigationDestination(for: Standing.self) { standing in

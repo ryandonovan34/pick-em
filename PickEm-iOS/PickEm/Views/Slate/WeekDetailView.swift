@@ -5,11 +5,16 @@ struct WeekDetailView: View {
     let weekID: String
     var slateViewModel: SlateViewModel
     var pickViewModel: PickViewModel
+    var standingsViewModel: StandingsViewModel
     @State private var pickTarget: Game?
     @State private var showManage = false
 
     private var weekGames: WeekGames? {
         slateViewModel.weekGames.first { $0.week.id == weekID }
+    }
+
+    private var displayNames: [String: String] {
+        Dictionary(uniqueKeysWithValues: standingsViewModel.standings.map { ($0.userID, $0.displayName) })
     }
 
     var body: some View {
@@ -31,7 +36,9 @@ struct WeekDetailView: View {
         .refreshable {
             await slateViewModel.refresh()
             await pickViewModel.loadAllPicks(groupID: slateViewModel.group.id)
+            await pickViewModel.loadAllMemberPicks(weekID: weekID)
         }
+        .onLoad { await pickViewModel.loadAllMemberPicks(weekID: weekID) }
         .sheet(item: $pickTarget) { game in
             PickSubmissionView(
                 game: game,
@@ -55,6 +62,9 @@ struct WeekDetailView: View {
                         game: game,
                         pick: pickViewModel.pick(for: game),
                         group: slateViewModel.group,
+                        memberPicks: pickViewModel.memberPicks(for: game).map {
+                            MemberPickDisplay(pick: $0, displayName: displayNames[$0.userID] ?? "Member")
+                        },
                         onPickTapped: { pickTarget = game }
                     )
                     .padding(.horizontal, 16)
@@ -123,6 +133,10 @@ struct WeekDetailView: View {
                 group: MockData.group,
                 currentUserID: MockData.currentUserID,
                 pickRepository: MockPickRepository()
+            ),
+            standingsViewModel: StandingsViewModel(
+                group: MockData.group,
+                standingsRepository: MockStandingsRepository()
             )
         )
     }
