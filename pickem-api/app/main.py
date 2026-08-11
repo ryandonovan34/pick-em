@@ -64,3 +64,23 @@ app.include_router(dev.router,                prefix="/dev",    tags=["Dev"])
 def health_check() -> dict:
     """Simple health check used by Fly.io and load balancers."""
     return {"status": "ok", "env": settings.APP_ENV}
+
+
+# Team ID + bundle ID from the iOS project (project.pbxproj:
+# DEVELOPMENT_TEAM / PRODUCT_BUNDLE_IDENTIFIER) — update both here and
+# there together if either ever changes.
+_APPLE_APP_ID = "WVZ32CQH5A.com.ryandonovan.pickem"
+
+
+@app.get("/.well-known/apple-app-site-association", tags=["Apple"])
+@app.get("/apple-app-site-association", tags=["Apple"])
+def apple_app_site_association() -> dict:
+    """
+    Associates this domain with the iOS app for webcredentials (AutoFill-
+    saved logins tied to a verified domain instead of just the app's
+    bundle ID, and surfaced properly in Settings > Passwords). Served at
+    both the modern (.well-known) and legacy (root) paths since iOS tries
+    both. Must stay plain JSON with no redirects — Apple's servers fetch
+    it directly, not through the app.
+    """
+    return {"webcredentials": {"apps": [_APPLE_APP_ID]}}
