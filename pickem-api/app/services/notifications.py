@@ -84,6 +84,34 @@ def send_line_check_reminder(fcm_token: str, team_names: str, minutes_until_kick
     })
 
 
+def send_pick_digest_reminder(fcm_token: str, team_names: list[str], minutes_until_kickoff: int) -> None:
+    """Same as send_pick_reminder but for a cluster of games kicking off
+    around the same time — collapses what would otherwise be one
+    notification per game into one notification for the whole cluster."""
+    if len(team_names) == 1:
+        send_pick_reminder(fcm_token, team_names[0], minutes_until_kickoff)
+        return
+    _send(fcm_token, {
+        "notification": {
+            "title": "Pick reminder",
+            "body": f"{len(team_names)} games kick off in {minutes_until_kickoff} minutes — get your picks in!",
+        },
+    })
+
+
+def send_line_check_digest_reminder(fcm_token: str, team_names: list[str], minutes_until_kickoff: int) -> None:
+    """Digest form of send_line_check_reminder — see send_pick_digest_reminder."""
+    if len(team_names) == 1:
+        send_line_check_reminder(fcm_token, team_names[0], minutes_until_kickoff)
+        return
+    _send(fcm_token, {
+        "notification": {
+            "title": "Line check",
+            "body": f"{len(team_names)} games kick off in {minutes_until_kickoff} minutes — lines may have moved, double-check your picks.",
+        },
+    })
+
+
 def send_slate_ready(fcm_tokens: list[str], group_name: str, week_label: str) -> None:
     for token in fcm_tokens:
         _send(token, {

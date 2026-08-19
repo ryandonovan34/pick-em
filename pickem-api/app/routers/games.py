@@ -29,10 +29,9 @@ from app.services.nfl_calendar import local_date, monday_of, nfl_week_number_and
 from app.services.odds import ingest_odds
 from app.services.scheduler import (
     cancel_odds_refresh_for_game,
-    cancel_pick_reminders,
     cancel_slate_admin_reminder,
     schedule_odds_refresh_for_game,
-    schedule_pick_reminders,
+    schedule_pick_reminders_for_week,
     schedule_slate_admin_reminder,
 )
 
@@ -287,9 +286,8 @@ def add_game_to_slate(
 
     all_slate = _slate_games(week_id, session)
     first_kickoff = min(ensure_utc(g.kickoff_at) for g in all_slate)
-    team_names = f"{game.away_team} at {game.home_team}"
 
-    schedule_pick_reminders(game.id, group_id, ensure_utc(game.kickoff_at), team_names)
+    schedule_pick_reminders_for_week(week_id, group_id, all_slate)
     schedule_slate_admin_reminder(week_id, group_id, first_kickoff)
     schedule_odds_refresh_for_game(game.id, game.sport, ensure_utc(game.kickoff_at))
 
@@ -347,12 +345,12 @@ def remove_game_from_slate(
 
     session.delete(slate_game)
     session.commit()
-    cancel_pick_reminders(game_id)
     # Each slate game has its own pre-kickoff odds refresh now (see
     # add_game_to_slate) — removing one doesn't affect any other game's job.
     cancel_odds_refresh_for_game(game_id)
 
     remaining = _slate_games(week_id, session)
+    schedule_pick_reminders_for_week(week_id, group_id, remaining)
     if remaining:
         first_kickoff = min(ensure_utc(g.kickoff_at) for g in remaining)
         schedule_slate_admin_reminder(week_id, group_id, first_kickoff)

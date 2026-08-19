@@ -39,33 +39,60 @@ def shutdown() -> None:
 
 # ── Public job factories ──────────────────────────────────────────────────────
 
-def schedule_pick_reminders(
-    game_id: uuid.UUID,
-    group_id: uuid.UUID,
-    kickoff_at: datetime,
-    team_names: str,
-) -> None:
-    """
-    Schedule pick-reminder notifications at T-120, T-60, T-30, and T-15 minutes.
-    FCM tokens and already-picked status are resolved at fire time.
-    """
-    for minutes in [120, 60, 30, 15]:
-        scheduler.add_job(
-            _send_pick_reminders,
-            "date",
-            run_date=kickoff_at - timedelta(minutes=minutes),
-            id=f"pick_reminder_{game_id}_{minutes}m",
-            replace_existing=True,
-            kwargs={"game_id": game_id, "group_id": group_id, "team_names": team_names, "minutes": minutes},
-        )
+_CLUSTER_WINDOW = timedelta(minutes=90)
 
 
-def cancel_pick_reminders(game_id: uuid.UUID) -> None:
-    """Cancel all scheduled pick reminders for a game (e.g. when removed from a slate)."""
-    for minutes in [120, 60, 30, 15]:
-        job_id = f"pick_reminder_{game_id}_{minutes}m"
-        if scheduler.get_job(job_id):
-            scheduler.remove_job(job_id)
+def schedule_pick_reminders_for_week(week_id: uuid.UUID, group_id: uuid.UUID, games: list) -> None:
+    """
+    (Re)schedule pick-reminder notifications for every game currently on a
+    week's slate, at T-120, T-60, T-30, and T-15 minutes before kickoff.
+
+    Games whose kickoffs fall within _CLUSTER_WINDOW of each other (chained —
+    each game within the window of the previous one) share a single digest
+    reminder per offset instead of firing one notification per game. Without
+    this, a slate with several games kicking off close together (e.g. a
+    Saturday preseason batch) produces a burst of near-simultaneous
+    notifications that reads as "every game" even though each one is
+    correctly scoped to the slate.
+
+    Always cancels and fully recomputes this week's jobs first, so clusters
+    stay correct as games are added to or removed from the slate. FCM tokens
+    and already-picked status are resolved at fire time.
+    """
+    from app.utils import ensure_utc
+
+    cancel_pick_reminders_for_week(week_id)
+    if not games:
+        return
+
+    ordered = sorted(games, key=lambda g: ensure_utc(g.kickoff_at))
+    clusters: list[list] = []
+    for game in ordered:
+        if clusters and ensure_utc(game.kickoff_at) - ensure_utc(clusters[-1][-1].kickoff_at) <= _CLUSTER_WINDOW:
+            clusters[-1].append(game)
+        else:
+            clusters.append([game])
+
+    for cluster in clusters:
+        anchor = min(ensure_utc(g.kickoff_at) for g in cluster)
+        game_ids = [g.id for g in cluster]
+        for minutes in [120, 60, 30, 15]:
+            scheduler.add_job(
+                _send_pick_reminders,
+                "date",
+                run_date=anchor - timedelta(minutes=minutes),
+                id=f"pick_digest_{week_id}_{anchor.isoformat()}_{minutes}m",
+                replace_existing=True,
+                kwargs={"game_ids": game_ids, "group_id": group_id, "minutes": minutes},
+            )
+
+
+def cancel_pick_reminders_for_week(week_id: uuid.UUID) -> None:
+    """Cancel every scheduled pick-reminder job for a week (across all clusters)."""
+    prefix = f"pick_digest_{week_id}_"
+    for job in scheduler.get_jobs():
+        if job.id.startswith(prefix):
+            scheduler.remove_job(job.id)
 
 
 def schedule_slate_admin_reminder(
@@ -197,9 +224,8 @@ def _relevant_api_sport_key(kickoff_at: datetime) -> str:
 
 
 def _send_pick_reminders(
-    game_id: uuid.UUID,
+    game_ids: list[uuid.UUID],
     group_id: uuid.UUID,
-    team_names: str,
     minutes: int,
 ) -> None:
     """
@@ -209,12 +235,21 @@ def _send_pick_reminders(
     no spread-at-pick-time snapshot), so an already-picked member still
     benefits from a nudge to come back and re-check the line before it's
     too late to change their mind.
+
+    game_ids is a whole kickoff cluster (see schedule_pick_reminders_for_week)
+    — each member gets exactly one notification here, split into "still
+    needs a pick" vs "already picked" games and worded accordingly.
     """
     from app.database import engine
-    from app.models import GroupMember, Pick, User
+    from app.models import Game, GroupMember, Pick, User
     from sqlmodel import Session, select
 
     with Session(engine) as session:
+        games = session.exec(select(Game).where(Game.id.in_(game_ids))).all()  # type: ignore[attr-defined]
+        if not games:
+            return
+        team_names_by_id = {g.id: f"{g.away_team} at {g.home_team}" for g in games}
+
         members = session.exec(
             select(User)
             .join(GroupMember, GroupMember.user_id == User.id)  # type: ignore[arg-type]
@@ -224,17 +259,22 @@ def _send_pick_reminders(
         for member in members:
             if not member.fcm_token:
                 continue
-            already_picked = session.exec(
-                select(Pick).where(
-                    Pick.user_id == member.id,
-                    Pick.game_id == game_id,
-                    Pick.group_id == group_id,
-                )
-            ).first()
-            if already_picked is None:
-                notifications.send_pick_reminder(member.fcm_token, team_names, minutes)
-            else:
-                notifications.send_line_check_reminder(member.fcm_token, team_names, minutes)
+            picked_ids = {
+                p.game_id for p in session.exec(
+                    select(Pick).where(
+                        Pick.user_id == member.id,
+                        Pick.group_id == group_id,
+                        Pick.game_id.in_(game_ids),  # type: ignore[attr-defined]
+                    )
+                ).all()
+            }
+            unpicked_names = [team_names_by_id[gid] for gid in game_ids if gid not in picked_ids]
+            picked_names = [team_names_by_id[gid] for gid in game_ids if gid in picked_ids]
+
+            if unpicked_names:
+                notifications.send_pick_digest_reminder(member.fcm_token, unpicked_names, minutes)
+            if picked_names:
+                notifications.send_line_check_digest_reminder(member.fcm_token, picked_names, minutes)
 
 
 def _send_slate_admin_reminder(group_id: uuid.UUID) -> None:

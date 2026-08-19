@@ -61,10 +61,10 @@ def test_already_picked_member_gets_line_check_not_skipped(session: Session, mon
 
     sent_pick_reminders = []
     sent_line_checks = []
-    monkeypatch.setattr(notifications, "send_pick_reminder", lambda token, *a: sent_pick_reminders.append(token))
-    monkeypatch.setattr(notifications, "send_line_check_reminder", lambda token, *a: sent_line_checks.append(token))
+    monkeypatch.setattr(notifications, "send_pick_digest_reminder", lambda token, *a: sent_pick_reminders.append(token))
+    monkeypatch.setattr(notifications, "send_line_check_digest_reminder", lambda token, *a: sent_line_checks.append(token))
 
-    scheduler._send_pick_reminders(game.id, group.id, "Away @ Home", 15)
+    scheduler._send_pick_reminders([game.id], group.id, 15)
 
     assert sent_pick_reminders == [unpicked_user.fcm_token]
     assert sent_line_checks == [picked_user.fcm_token]
@@ -79,10 +79,10 @@ def test_member_without_fcm_token_is_skipped(session: Session, monkeypatch):
     session.commit()
 
     sent = []
-    monkeypatch.setattr(notifications, "send_pick_reminder", lambda token, *a: sent.append(token))
-    monkeypatch.setattr(notifications, "send_line_check_reminder", lambda token, *a: sent.append(token))
+    monkeypatch.setattr(notifications, "send_pick_digest_reminder", lambda token, *a: sent.append(token))
+    monkeypatch.setattr(notifications, "send_line_check_digest_reminder", lambda token, *a: sent.append(token))
 
-    scheduler._send_pick_reminders(game.id, group.id, "Away @ Home", 15)
+    scheduler._send_pick_reminders([game.id], group.id, 15)
 
     assert sent == []
 
@@ -138,6 +138,80 @@ class TestPerGameOddsRefresh:
         assert scheduler.scheduler.get_job(f"odds_refresh_game_{game_b}") is not None
 
         scheduler.cancel_odds_refresh_for_game(game_b)  # cleanup
+
+
+class TestPickReminderClustering:
+    """
+    Regression: a slate with several games kicking off close together (e.g.
+    a Saturday preseason batch) used to schedule one full set of T-120/60/
+    30/15 reminders per game — a member could get 20+ near-simultaneous
+    notifications for a slate of just 5 games. Games kicking off within
+    _CLUSTER_WINDOW of each other now share a single digest reminder per
+    offset instead.
+    """
+
+    def test_games_within_the_cluster_window_share_one_job_per_offset(self, session: Session):
+        admin = _make_user(session)
+        group = _make_group(session, admin_id=admin.id)
+        session.commit()
+        week_id = uuid.uuid4()
+        base = datetime.now(timezone.utc) + timedelta(hours=10)
+        close_games = [_make_game(session, kickoff_at=base + timedelta(minutes=m)) for m in (0, 20, 45)]
+        session.commit()
+
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, close_games)
+
+        jobs = [j for j in scheduler.scheduler.get_jobs() if j.id.startswith(f"pick_digest_{week_id}_")]
+        assert len(jobs) == 4  # one per T-120/60/30/15 offset, not one per game
+        assert set(jobs[0].kwargs["game_ids"]) == {g.id for g in close_games}
+
+    def test_games_outside_the_cluster_window_get_separate_jobs(self, session: Session):
+        admin = _make_user(session)
+        group = _make_group(session, admin_id=admin.id)
+        session.commit()
+        week_id = uuid.uuid4()
+        base = datetime.now(timezone.utc) + timedelta(hours=10)
+        thursday_game = _make_game(session, kickoff_at=base)
+        monday_game = _make_game(session, kickoff_at=base + timedelta(days=4))
+        session.commit()
+
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, [thursday_game, monday_game])
+
+        jobs = [j for j in scheduler.scheduler.get_jobs() if j.id.startswith(f"pick_digest_{week_id}_")]
+        assert len(jobs) == 8  # 4 offsets x 2 independent clusters
+        game_id_sets = {frozenset(j.kwargs["game_ids"]) for j in jobs}
+        assert game_id_sets == {frozenset([thursday_game.id]), frozenset([monday_game.id])}
+
+    def test_rescheduling_a_week_cancels_its_old_jobs_first(self, session: Session):
+        admin = _make_user(session)
+        group = _make_group(session, admin_id=admin.id)
+        session.commit()
+        week_id = uuid.uuid4()
+        base = datetime.now(timezone.utc) + timedelta(hours=10)
+        game_a = _make_game(session, kickoff_at=base)
+        session.commit()
+
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, [game_a])
+        game_b = _make_game(session, kickoff_at=base + timedelta(days=4))
+        session.commit()
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, [game_a, game_b])
+
+        jobs = [j for j in scheduler.scheduler.get_jobs() if j.id.startswith(f"pick_digest_{week_id}_")]
+        assert len(jobs) == 8  # stale single-game jobs replaced, not left dangling
+
+    def test_removing_all_games_cancels_the_weeks_jobs(self, session: Session):
+        admin = _make_user(session)
+        group = _make_group(session, admin_id=admin.id)
+        session.commit()
+        week_id = uuid.uuid4()
+        game = _make_game(session)
+        session.commit()
+
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, [game])
+        scheduler.schedule_pick_reminders_for_week(week_id, group.id, [])
+
+        jobs = [j for j in scheduler.scheduler.get_jobs() if j.id.startswith(f"pick_digest_{week_id}_")]
+        assert jobs == []
 
 
 class TestRelevantApiSportKey:
