@@ -6,6 +6,7 @@ comes from the /dev/mock-games endpoint. This module handles Phase 3+.
 """
 
 import logging
+import uuid
 from datetime import datetime
 
 import httpx
@@ -144,8 +145,13 @@ def _ingest_one(api_sport_key: str, stored_sport: str) -> int:
                 select(Game).where(Game.odds_api_id == g["id"])
             ).first()
             if existing:
-                existing.spread = spread
-                existing.favorite_team = favorite_team
+                # Once locked (see lock_game_spread), the line a member picked
+                # against and the line it's graded on must stay the same
+                # number — kickoff_at can still drift (rare API correction),
+                # but the spread itself is frozen.
+                if not existing.spread_locked:
+                    existing.spread = spread
+                    existing.favorite_team = favorite_team
                 existing.kickoff_at = kickoff_at
                 existing.odds_fetched_at = now
                 session.add(existing)
@@ -165,6 +171,22 @@ def _ingest_one(api_sport_key: str, stored_sport: str) -> int:
 
     logger.info("Odds ingest: %d games upserted for api_sport=%s (stored as %s)", count, api_sport_key, stored_sport)
     return count
+
+
+def lock_game_spread(game_id: uuid.UUID) -> None:
+    """
+    Freeze a game's spread/favorite_team at whatever they currently are.
+    Called 30 minutes before kickoff (see scheduler.schedule_odds_refresh_for_game)
+    so the number members picked against can't keep drifting after that point —
+    everyone gets graded on the same closing line the UI showed them.
+    """
+    with Session(engine) as session:
+        game = session.get(Game, game_id)
+        if game is None:
+            return
+        game.spread_locked = True
+        session.add(game)
+        session.commit()
 
 
 def fetch_scores(sport: str) -> list[dict]:

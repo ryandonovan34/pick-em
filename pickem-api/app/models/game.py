@@ -33,6 +33,10 @@ class Game(SQLModel, table=True):
     spread: float
     # The team that the spread favors (always the one with the negative spread).
     favorite_team: str = Field(max_length=100)
+    # Once True, odds ingest stops overwriting spread/favorite_team — set 30
+    # minutes before kickoff (see services/scheduler.py) so the number
+    # everyone picked against and the number it's graded on are the same one.
+    spread_locked: bool = Field(default=False)
     kickoff_at: datetime
     # Null until results are posted.
     home_score: Optional[int] = None

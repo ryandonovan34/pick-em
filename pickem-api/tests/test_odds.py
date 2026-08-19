@@ -16,7 +16,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.config import settings
 from app.models import Game
-from app.services.odds import ingest_odds, odds_api_sport_keys
+from app.services.odds import ingest_odds, lock_game_spread, odds_api_sport_keys
 
 
 def _raw_game(game_id: str, home: str, away: str, spread: float, commence: str) -> dict:
@@ -87,3 +87,75 @@ class TestIngestOddsNormalizesSport:
         # they came from.
         assert sports == {"americanfootball_nfl"}
         assert odds_ids == {"pre-1", "reg-1"}
+
+
+class TestSpreadLock:
+    """
+    Regression: a line moving between when a member picked and kickoff meant
+    grading could use a totally different spread than the one the member
+    actually saw and picked against — e.g. a preseason line drifting from
+    TEN -2.5 to TEN -10.5 by kickoff flips what should've been a win into a
+    loss. lock_game_spread (called 30 min before kickoff, see
+    scheduler._refresh_and_lock_game) freezes the line so ingest can no
+    longer touch it.
+    """
+
+    def _seeded_engine(self, spread: float, favorite: str, locked: bool):
+        engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add(Game(
+                odds_api_id="reg-1", sport="americanfootball_nfl",
+                home_team="Buffalo Bills", away_team="Miami Dolphins",
+                spread=spread, favorite_team=favorite, spread_locked=locked,
+                kickoff_at=datetime(2026, 9, 10, 17, 0, tzinfo=timezone.utc),
+            ))
+            session.commit()
+        return engine
+
+    def _ingest_with_updated_line(self, engine, new_spread: float):
+        def fake_get(url, params=None, timeout=None):
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            resp.json.return_value = [_raw_game(
+                "reg-1", "Buffalo Bills", "Miami Dolphins", new_spread,
+                "2026-09-10T17:00:00Z",
+            )]
+            return resp
+
+        with patch("app.services.odds.engine", engine), \
+             patch.object(settings, "ODDS_API_KEY", "test-key"), \
+             patch("app.services.odds.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = fake_get
+            mock_client_cls.return_value.__enter__.return_value = mock_client
+            ingest_odds("americanfootball_nfl")
+
+    def test_ingest_still_updates_an_unlocked_games_spread(self):
+        engine = self._seeded_engine(spread=-2.5, favorite="Buffalo Bills", locked=False)
+        self._ingest_with_updated_line(engine, new_spread=-6.5)
+
+        with Session(engine) as session:
+            game = session.exec(select(Game).where(Game.odds_api_id == "reg-1")).first()
+        assert game.spread == -6.5
+
+    def test_ingest_does_not_touch_a_locked_games_spread(self):
+        engine = self._seeded_engine(spread=-2.5, favorite="Buffalo Bills", locked=True)
+        self._ingest_with_updated_line(engine, new_spread=-10.5)
+
+        with Session(engine) as session:
+            game = session.exec(select(Game).where(Game.odds_api_id == "reg-1")).first()
+        assert game.spread == -2.5
+        assert game.favorite_team == "Buffalo Bills"
+
+    def test_lock_game_spread_sets_the_flag(self):
+        engine = self._seeded_engine(spread=-2.5, favorite="Buffalo Bills", locked=False)
+        with Session(engine) as session:
+            game_id = session.exec(select(Game).where(Game.odds_api_id == "reg-1")).first().id
+
+        with patch("app.services.odds.engine", engine):
+            lock_game_spread(game_id)
+
+        with Session(engine) as session:
+            game = session.get(Game, game_id)
+        assert game.spread_locked is True

@@ -117,33 +117,40 @@ def cancel_slate_admin_reminder(week_id: uuid.UUID) -> None:
         scheduler.remove_job(job_id)
 
 
+_SPREAD_LOCK_WINDOW = timedelta(minutes=30)
+
+
 def schedule_odds_refresh_for_game(
     game_id: uuid.UUID,
     sport: str,
     kickoff_at: datetime,
 ) -> None:
     """
-    Schedule a one-time odds refresh 3 hours before THIS game's own kickoff —
-    not just the first game of its slate. A slate can span Thursday through
-    Monday; a refresh anchored only to the earliest game left the later
-    games' spreads relying solely on the 24h interval job, which could be
-    up to a day stale by the time they actually kick off. Replaces any
+    Schedule a one-time final odds refresh 30 minutes before THIS game's own
+    kickoff — not just the first game of its slate. A slate can span Thursday
+    through Monday; a refresh anchored only to the earliest game left the
+    later games' spreads relying solely on the 24h interval job, which could
+    be up to a day stale by the time they actually kick off.
+
+    This is also the line's lock point: after this fetch, the game's spread
+    is frozen (see odds.lock_game_spread) so the number everyone picked
+    against and the number it's graded on can't diverge. Replaces any
     existing job for this game so fire time stays current if the game's
     kickoff changes. No-op if ODDS_API_KEY is not configured.
     """
     from app.config import settings
     if not settings.ODDS_API_KEY:
         return
-    fire_at = max(kickoff_at - timedelta(hours=3), datetime.now(timezone.utc))
+    fire_at = max(kickoff_at - _SPREAD_LOCK_WINDOW, datetime.now(timezone.utc))
     scheduler.add_job(
-        _refresh_sport_job,
+        _refresh_and_lock_game,
         "date",
         run_date=fire_at,
         id=f"odds_refresh_game_{game_id}",
         replace_existing=True,
-        kwargs={"sport": sport},
+        kwargs={"game_id": game_id, "sport": sport},
     )
-    logger.info("Odds refresh for game %s scheduled at %s", game_id, fire_at)
+    logger.info("Final odds refresh + spread lock for game %s scheduled at %s", game_id, fire_at)
 
 
 def cancel_odds_refresh_for_game(game_id: uuid.UUID) -> None:
@@ -205,6 +212,19 @@ def _refresh_sport_job(sport: str) -> None:
         ingest_odds(sport)
     except Exception:
         logger.exception("Odds refresh failed for sport=%s", sport)
+
+
+def _refresh_and_lock_game(game_id: uuid.UUID, sport: str) -> None:
+    """Fires 30 minutes before a game's kickoff: one last odds fetch, then
+    freeze that game's spread regardless of whether the fetch found a newer
+    line — see odds.lock_game_spread."""
+    from app.services.odds import ingest_odds, lock_game_spread
+    try:
+        ingest_odds(sport)
+    except Exception:
+        logger.exception("Final odds refresh failed for sport=%s (game=%s)", sport, game_id)
+    finally:
+        lock_game_spread(game_id)
 
 
 def _relevant_api_sport_key(kickoff_at: datetime) -> str:

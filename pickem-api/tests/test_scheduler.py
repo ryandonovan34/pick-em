@@ -109,7 +109,7 @@ class TestPerGameOddsRefresh:
 
         job = scheduler.scheduler.get_job(f"odds_refresh_game_{game_id}")
         assert job is not None
-        assert job.trigger.run_date == kickoff - timedelta(hours=3)
+        assert job.trigger.run_date == kickoff - timedelta(minutes=30)
 
     def test_two_games_in_the_same_slate_get_independent_jobs(self):
         thursday_game_id = uuid.uuid4()
@@ -122,8 +122,8 @@ class TestPerGameOddsRefresh:
 
         thursday_job = scheduler.scheduler.get_job(f"odds_refresh_game_{thursday_game_id}")
         monday_job = scheduler.scheduler.get_job(f"odds_refresh_game_{monday_game_id}")
-        assert thursday_job.trigger.run_date == thursday_kickoff - timedelta(hours=3)
-        assert monday_job.trigger.run_date == monday_kickoff - timedelta(hours=3)
+        assert thursday_job.trigger.run_date == thursday_kickoff - timedelta(minutes=30)
+        assert monday_job.trigger.run_date == monday_kickoff - timedelta(minutes=30)
 
     def test_cancelling_one_game_leaves_the_others_scheduled(self):
         game_a = uuid.uuid4()
@@ -138,6 +138,24 @@ class TestPerGameOddsRefresh:
         assert scheduler.scheduler.get_job(f"odds_refresh_game_{game_b}") is not None
 
         scheduler.cancel_odds_refresh_for_game(game_b)  # cleanup
+
+    def test_the_scheduled_job_locks_the_games_spread_even_if_the_fetch_fails(self, monkeypatch):
+        # The lock must happen regardless of ingest success — a transient
+        # Odds API failure at T-30 shouldn't leave the line free to drift
+        # right up through kickoff.
+        from app.services import odds
+
+        def boom(sport):
+            raise RuntimeError("Odds API down")
+
+        locked_ids = []
+        monkeypatch.setattr(odds, "ingest_odds", boom)
+        monkeypatch.setattr(odds, "lock_game_spread", lambda game_id: locked_ids.append(game_id))
+
+        game_id = uuid.uuid4()
+        scheduler._refresh_and_lock_game(game_id, "americanfootball_nfl")
+
+        assert locked_ids == [game_id]
 
 
 class TestPickReminderClustering:
