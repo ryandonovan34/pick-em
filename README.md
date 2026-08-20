@@ -13,22 +13,6 @@ A full-stack NFL pick'em challenge app. Users join groups, pick games against th
 
 ---
 
-## Summary & Design Rationale
-
-PickEm started as a general "pick'em" concept with room for multiple sports and challenge formats, and was deliberately scoped down to **NFL only, season-long standings**. That narrowing shows up in the data model — `Group.sport` and `Group.mode` still exist as plain string fields rather than enums with real branching logic, because there's currently only one value for either. They're cheap to leave in place and would be the natural extension point if the scope ever widens again, but nothing in the app today treats them as configurable.
-
-A few of the bigger technical decisions, and the reasoning behind them:
-
-**Authentication — short-lived JWT + revocable opaque refresh token, not one or the other.** A single long-lived JWT would be simplest, but a compromised or lost device would have no way to be logged out remotely — a JWT is only valid as long as its own expiry, with no way to revoke it early short of a server-side blocklist (which erases the whole point of a stateless token). So auth is split in two: a JWT access token that's short-lived (30 min) and requires no DB lookup on every request, and a random opaque refresh token whose *bcrypt hash* (never the raw value) is stored server-side — logout or a compromised-device response is just deleting that row. Passwords are checked with a constant-time comparison against a dummy hash even when the email doesn't exist, so a login attempt can't be used to enumerate real accounts by response timing.
-
-**PostgreSQL, with standings materialized rather than computed on read.** The data is inherently relational — users, groups, memberships, weeks, games, and picks all have real foreign-key relationships, and grading a single game result has to atomically update every affected pick *and* every affected standings row in one transaction. That's a natural fit for a relational database with real transactions, not a document store. Standings themselves are pre-computed into their own table at result-processing time rather than aggregated from picks at read time, because the leaderboard is the highest-traffic read in the app — it should be one indexed row-scan, not a fan-out `GROUP BY` over every pick ever made. Schema changes only ever happen through Alembic migrations, checked into the repo, so "what does the schema look like" is always answerable from git history rather than tribal knowledge of manual `ALTER TABLE`s.
-
-**Fly.io, with the machine allowed to suspend when idle.** This app has real but bursty, low-overall traffic — a handful of active pick'em groups, not a high-QPS product — so an always-on machine would mostly be paying to idle. `fly.toml` sets `auto_stop_machines = "suspend"`: the machine spins down after a period of no requests and wakes back up on the next one. The trade-off we accepted knowingly: background jobs (pick reminders, the pre-kickoff odds refresh) live in an in-memory scheduler, so a job whose fire time lands exactly during a suspend window can be silently lost. We chose to accept that risk rather than pay for an always-on machine just to guarantee job delivery — see `pickem-api/README.md`'s Background Jobs section for exactly which jobs are affected. Migrations are wired into the deploy itself (`release_command = "alembic upgrade head"` in `fly.toml`), so applying a new schema is never a manual step someone has to remember to run after deploying.
-
-**Caching the Odds API aggressively, and locking the line before kickoff.** The Odds API's free tier caps out at 500 requests/month, so every avoidable call is real quota. Odds are fetched into a shared pool in Postgres — once per real matchup, not once per group — and reused across every group whose slate includes that game, with a scheduled refresh cadence (on startup, every 24h, and once more 30 minutes before each slate-added game's own kickoff) instead of fetching on every request. That last refresh also **locks** the game's spread permanently once it fires: after that point nothing can move the number again. That's a deliberate trade-off of "always show the freshest possible line" in favor of "grade picks fairly" — without a lock, a line that moved between when someone picked and when the game kicked off could flip a pick from a win to a loss against a number the member never actually saw. Freezing it right before kickoff means the number everyone picked against and the number it's graded on are guaranteed to be the same one. Full timing details are in `pickem-api/README.md`'s Background Jobs & Caching section.
-
----
-
 ## Features
 
 ### Groups
@@ -103,17 +87,31 @@ The admin sets the total number of superdogs each user is allowed for the season
 
 ### Backend (`pickem-api/`)
 
-**Language/framework**: Python 3.12+, FastAPI, SQLModel (SQLAlchemy + Pydantic), Alembic migrations.
+**Language/framework**: Python 3.13, FastAPI, SQLModel (SQLAlchemy + Pydantic), Alembic migrations.
 
-**Auth**: JWT access tokens (short-lived) + refresh tokens (long-lived, hashed and stored in DB). bcrypt password hashing with constant-time comparison to prevent timing attacks.
+**Auth** — JWT access token + opaque refresh token, not one or the other:
+- Access token: short-lived JWT (30 min), no DB lookup needed to validate a request.
+- Refresh token: long-lived (30 days), random opaque value — only its bcrypt hash is stored, so a leaked DB doesn't hand out usable tokens, and logout/revocation is just deleting that row (a stateless JWT can't be revoked early without a blocklist).
+- Login is checked against a dummy bcrypt hash even when the email doesn't exist, so response timing can't be used to enumerate real accounts.
 
-**Odds data**: Fetched from [The Odds API](https://the-odds-api.com) and cached in Postgres. The iOS app never calls the Odds API directly. A configurable staleness threshold (`ODDS_CACHE_TTL_MINUTES`) triggers a background re-fetch when an admin views available games.
+**Postgres, with standings materialized rather than computed on read**:
+- The data is inherently relational (users → groups → memberships → weeks → games → picks), and grading a result has to atomically update every affected pick *and* standings row in one transaction — a natural fit for real transactions, not a document store.
+- The `standings` table is pre-computed at result-processing time instead of aggregated from picks at read time, since the leaderboard is the highest-traffic read path — one indexed row-scan, not a `GROUP BY` over every pick ever made.
+- Schema changes only ever happen through checked-in Alembic migrations — never a manual `ALTER TABLE`.
 
-**Scheduling**: APScheduler drives periodic odds fetches and pick-reminder notifications. Separate jobs are scheduled per-game when games are added to a slate; cancelled if games are removed.
+**Odds API caching** — the free tier caps at 500 requests/month, so avoiding unnecessary calls matters:
+- Games are fetched into one shared pool and reused across every group whose slate includes that game — one Postgres row and one set of API calls, not one per group.
+- Fetch cadence is scheduled, not per-request: once on startup, every 24h, plus once more 30 minutes before each slate-added game's own kickoff.
+- That last pre-kickoff fetch also **locks** the game's spread permanently — trading "always freshest line" for "fair grading," so a member is graded on the same number they actually picked against, not whatever it drifted to by kickoff.
+- The iOS app never calls the Odds API directly; it only ever sees what's cached in Postgres.
 
-**Push notifications**: FCM HTTP v1 API via a Google service account OAuth2 token.
+**Push notifications**: FCM HTTP v1 API via a Google service account OAuth2 token. Pick reminders (T-120/60/30/15 before kickoff) are scheduled per slate change via APScheduler, with games kicking off within 90 minutes of each other batched into one digest notification instead of one push per game.
 
-**Deployment**: Dockerized, deployed to Fly.io with a Fly.io Postgres instance.
+**Deployment** — Fly.io, Dockerized, with the machine allowed to suspend when idle (`auto_stop_machines = "suspend"`) since traffic is real but bursty, not worth paying for an always-on machine:
+- Trade-off accepted: background jobs live in an in-memory scheduler, so a job whose fire time lands exactly during a suspend window can be silently lost.
+- Migrations run automatically on every deploy (`release_command = "alembic upgrade head"` in `fly.toml`) — never a manual post-deploy step.
+
+Full technical detail on all of the above lives in [`pickem-api/README.md`](pickem-api/README.md) — see its Authentication and Background Jobs & Caching sections.
 
 ### Database
 
