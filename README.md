@@ -102,7 +102,7 @@ The admin sets the total number of superdogs each user is allowed for the season
 **Odds API caching** — the free tier caps at 500 requests/month, so avoiding unnecessary calls matters:
 - Games are fetched into one shared pool and reused across every group whose slate includes that game — one Postgres row and one set of API calls, not one per group.
 - Fetch cadence is scheduled, not per-request: once on startup, every 24h, plus once more 30 minutes before each slate-added game's own kickoff.
-- That last pre-kickoff fetch also **locks** the game's spread permanently — trading "always freshest line" for "fair grading," so a member is graded on the same number they actually picked against, not whatever it drifted to by kickoff.
+- That last pre-kickoff fetch is the line's official close — the game's spread **locks** at that point, so "the actual line" and "the line it's graded on" are always the same number. A member's T-30 reminder tells them explicitly that the line is locking right then, so a late move isn't a surprise.
 - The iOS app never calls the Odds API directly; it only ever sees what's cached in Postgres.
 
 **Push notifications**: FCM HTTP v1 API via a Google service account OAuth2 token. Pick reminders (T-120/60/30/15 before kickoff) are scheduled per slate change via APScheduler, with games kicking off within 90 minutes of each other batched into one digest notification instead of one push per game.

@@ -73,13 +73,25 @@ def send_pick_reminder(fcm_token: str, team_names: str, minutes_until_kickoff: i
 
 
 def send_line_check_reminder(fcm_token: str, team_names: str, minutes_until_kickoff: int) -> None:
-    """Sent to members who've already picked — lines can move between when
+    """
+    Sent to members who've already picked — lines can move between when
     they picked and kickoff, so they get the same cadence of reminders as
-    everyone else, just with copy that assumes a pick already exists."""
+    everyone else, just with copy that assumes a pick already exists.
+
+    The T-30 reminder is special-cased: that's the exact moment the game's
+    spread locks for good (see scheduler.schedule_odds_refresh_for_game /
+    odds.lock_game_spread), so instead of a vague "may have moved" nudge,
+    tell the member the line is finalizing right now — their last real
+    chance to notice a move before it's locked in for grading.
+    """
+    if minutes_until_kickoff == 30:
+        body = f"{team_names} kicks off in 30 minutes — the line is locking now, last chance to check it before it's final."
+    else:
+        body = f"{team_names} kicks off in {minutes_until_kickoff} minutes — the line may have moved, double-check your pick."
     _send(fcm_token, {
         "notification": {
             "title": "Line check",
-            "body": f"{team_names} kicks off in {minutes_until_kickoff} minutes — the line may have moved, double-check your pick.",
+            "body": body,
         },
     })
 
@@ -104,10 +116,14 @@ def send_line_check_digest_reminder(fcm_token: str, team_names: list[str], minut
     if len(team_names) == 1:
         send_line_check_reminder(fcm_token, team_names[0], minutes_until_kickoff)
         return
+    if minutes_until_kickoff == 30:
+        body = f"{len(team_names)} games kick off in 30 minutes — lines are locking now, last chance to check them before they're final."
+    else:
+        body = f"{len(team_names)} games kick off in {minutes_until_kickoff} minutes — lines may have moved, double-check your picks."
     _send(fcm_token, {
         "notification": {
             "title": "Line check",
-            "body": f"{len(team_names)} games kick off in {minutes_until_kickoff} minutes — lines may have moved, double-check your picks.",
+            "body": body,
         },
     })
 

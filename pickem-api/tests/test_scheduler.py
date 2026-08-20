@@ -232,6 +232,56 @@ class TestPickReminderClustering:
         assert jobs == []
 
 
+class TestLineCheckLockWording:
+    """
+    T-30 is the exact moment a game's spread locks for good (see
+    odds.lock_game_spread) — the line-check reminder that already-picked
+    members get at that offset says so explicitly instead of the generic
+    "may have moved" copy used at every other offset.
+    """
+
+    def _sent_body(self, monkeypatch, fn, *args):
+        captured = {}
+        monkeypatch.setattr(notifications, "_access_token", lambda: "fake-token")
+
+        class FakeResponse:
+            is_success = True
+
+        class FakeClient:
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def post(self, url, json, headers, timeout):
+                captured["body"] = json["message"]["notification"]["body"]
+                return FakeResponse()
+
+        monkeypatch.setattr(notifications.httpx, "Client", lambda: FakeClient())
+        fn(*args)
+        return captured["body"]
+
+    def test_single_game_at_t30_announces_the_lock(self, monkeypatch):
+        body = self._sent_body(monkeypatch, notifications.send_line_check_reminder, "tok", "Away @ Home", 30)
+        assert "locking now" in body
+
+    def test_single_game_at_other_offsets_uses_generic_copy(self, monkeypatch):
+        body = self._sent_body(monkeypatch, notifications.send_line_check_reminder, "tok", "Away @ Home", 60)
+        assert "may have moved" in body
+        assert "locking" not in body
+
+    def test_digest_at_t30_announces_the_lock(self, monkeypatch):
+        body = self._sent_body(
+            monkeypatch, notifications.send_line_check_digest_reminder, "tok", ["Game A", "Game B"], 30,
+        )
+        assert "locking now" in body
+
+    def test_digest_at_other_offsets_uses_generic_copy(self, monkeypatch):
+        body = self._sent_body(
+            monkeypatch, notifications.send_line_check_digest_reminder, "tok", ["Game A", "Game B"], 15,
+        )
+        assert "may have moved" in body
+
+
 class TestRelevantApiSportKey:
     """
     Regression: _fetch_and_process_results used to always query both the

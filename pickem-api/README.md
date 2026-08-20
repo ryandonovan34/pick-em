@@ -236,7 +236,9 @@ The startup ingest, 24h interval refresh, and 30-min results poll self-heal auto
 
 ### Spread locking
 
-A game's `spread`/`favorite_team` are freely overwritten by every refresh above — **until** the per-game T-30 refresh fires, which sets `Game.spread_locked = True`. From that point on, `ingest_odds` refuses to touch that game's line again, even if a later poll would otherwise have moved it. This exists so a member's pick is graded against the same number they actually saw, instead of whatever the line drifted to by kickoff.
+A game's `spread`/`favorite_team` are freely overwritten by every refresh above — **until** the per-game T-30 refresh fires, which sets `Game.spread_locked = True`. From that point on, `ingest_odds` refuses to touch that game's line again, even if a later poll would otherwise have moved it. T-30 is the line's official close, not an approximation — so "the actual line" and "the line it's graded on" are always the same number, by construction rather than by luck.
+
+The T-30 pick reminder (see below) already-picked members get is copy-aware of this: instead of a generic "the line may have moved" nudge, it explicitly says the line is locking right now — see `send_line_check_reminder`/`send_line_check_digest_reminder` in `app/services/notifications.py`.
 
 ### Other scheduled jobs
 
