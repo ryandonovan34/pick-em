@@ -9,7 +9,7 @@ Supports NFL season picks against the spread.
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Python | 3.12+ | Install via [pyenv](https://github.com/pyenv/pyenv) or [Homebrew](https://brew.sh): `brew install python@3.13` |
+| Python | 3.13 | Matches the production Docker image (`python:3.13-slim`). Install via [pyenv](https://github.com/pyenv/pyenv) or [Homebrew](https://brew.sh): `brew install python@3.13` |
 | PostgreSQL | 15+ | Local: `brew install postgresql@15`; or use Docker |
 | Fly.io CLI | latest | `brew install flyctl` — required for deployment only |
 | Docker | any | Required for deployment only |
@@ -192,11 +192,56 @@ Tests use an isolated SQLite database (`test.db`) so they never touch your local
 
 1. Register at [the-odds-api.com](https://the-odds-api.com) — the **free tier** (500 requests/month) is enough for development and testing.
 2. Copy your API key and set `ODDS_API_KEY=your_key` in `.env`.
-3. The sport key used by this app: `americanfootball_nfl`.
+3. The app's internal/group-facing sport key is `americanfootball_nfl`, but this fans out to **two** real Odds API sport keys under the hood (see `odds_api_sport_keys` in `app/services/odds.py`), since the Odds API splits NFL into separate endpoints per phase of the season:
+   - `americanfootball_nfl` — regular season + playoffs
+   - `americanfootball_nfl_preseason` — preseason only
+
+   Every game ends up stored under the same internal `sport='americanfootball_nfl'` regardless of which real endpoint it came from, so a group's sport filter doesn't need to care about the split.
 4. To verify the key works:
    ```bash
    curl "https://api.the-odds-api.com/v4/sports?apiKey=YOUR_KEY"
    ```
+
+See **Background Jobs & Caching** below for exactly when and how often the app calls out to this API — it's not just "on demand."
+
+---
+
+## Authentication
+
+JWT access tokens + opaque refresh tokens (`app/auth/`):
+
+1. `POST /auth/register` or `POST /auth/login` returns both an **access token** (a signed JWT, `ACCESS_TOKEN_EXPIRE_MINUTES` — default 30 min) and a **refresh token** (a random opaque UUID string, `REFRESH_TOKEN_EXPIRE_DAYS` — default 30 days).
+2. Every authenticated request sends the access token as `Authorization: Bearer <token>`. `get_current_user` (`app/auth/dependencies.py`) decodes and validates it, then loads the `User` row — 401 if missing/invalid/expired, 404 if the user was deleted after the token was issued.
+3. When the access token expires, the client calls `POST /auth/refresh` with the refresh token to get a new access token. **The refresh token itself is not rotated** — it stays valid until it expires or `POST /auth/logout` is called.
+4. Refresh tokens are never stored in plaintext: only their bcrypt hash is persisted (`RefreshToken.token_hash`), so a database leak doesn't hand out usable tokens. Login is checked against a dummy bcrypt hash even when the email doesn't exist, so the response timing doesn't leak whether an account exists.
+5. Logout deletes the matching `RefreshToken` row — this is why refresh tokens use random opaque values instead of JWTs: a stateless JWT refresh token couldn't be revoked without a separate blocklist.
+
+---
+
+## Background Jobs & Caching
+
+All background work runs via APScheduler (`app/services/scheduler.py`), starting in-process when the app boots (`main.py`'s `lifespan`) and stopping on shutdown. **Jobs live in memory only** — nothing is persisted, so a redeploy or a Fly.io machine suspend/resume wipes any pending job.
+
+The startup ingest, 24h interval refresh, and 30-min results poll self-heal automatically since `start()` unconditionally reschedules them on every boot. The two **per-game** jobs (pick reminders and the per-game pre-kickoff refresh/lock) do not: they're scheduled once, tied to a specific future `run_date`, with no re-hydration logic on startup — if the process restarts between when one was scheduled and its fire time, that specific job is simply lost. A pick reminder is recovered the next time that slate changes (which reschedules the whole week); a missed spread lock just means the line stays whatever it last was, unlocked, until the game's own results are processed.
+
+### When the Odds API actually gets called
+
+| Trigger | Cadence | What it does |
+|---|---|---|
+| App startup | Once | Ingests the full odds pool immediately so a cold start isn't empty. |
+| Recurring interval | Every 24h | Refills the odds pool for both real sport keys (see Odds API Setup above). |
+| `GET /odds/available` (admin browsing games to add) | On demand, rate-limited by `ODDS_CACHE_TTL_MINUTES` (default 120) | If the newest `Game.odds_fetched_at` for that sport is older than the TTL, a re-fetch is triggered — synchronously if the pool is completely empty (`MISS:cold`), or in a background task while stale data is returned immediately otherwise (`MISS:stale`). Fresh data returns `HIT` and triggers nothing. Check the `X-Cache` response header to see which happened. |
+| Per-game pre-kickoff refresh | Once per game, 30 minutes before **that game's own** kickoff | Scheduled the moment an admin adds the game to a slate (`schedule_odds_refresh_for_game`). One last fetch, then the game's spread is **locked** (see below) — this is also why a slate spanning Thursday–Monday doesn't rely on the 24h interval job alone for the later games. No-op if `ODDS_API_KEY` isn't set. |
+| Results polling | Every 30 min | Queries the Odds API scores endpoint, but only for the real sport key(s) actually needed — if no slate game with a past kickoff is still pending a result, nothing is queried at all. |
+
+### Spread locking
+
+A game's `spread`/`favorite_team` are freely overwritten by every refresh above — **until** the per-game T-30 refresh fires, which sets `Game.spread_locked = True`. From that point on, `ingest_odds` refuses to touch that game's line again, even if a later poll would otherwise have moved it. This exists so a member's pick is graded against the same number they actually saw, instead of whatever the line drifted to by kickoff.
+
+### Other scheduled jobs
+
+- **Pick reminders** (T-120/60/30/15 before kickoff): scheduled per slate change, not per game — games kicking off within 90 minutes of each other share one digest notification per offset instead of each generating their own set, to avoid a burst of near-duplicate pushes for a tightly-packed slate.
+- **Slate admin reminder** (T-180 before a week's first kickoff): nudges the admin if the slate isn't finalized yet.
 
 ---
 
@@ -208,7 +253,7 @@ Push notifications use Firebase Cloud Messaging (FCM HTTP v1 API — **not** the
 2. Project settings → Service accounts → Generate new private key → download the JSON file.
 3. Set `FCM_PROJECT_ID=your-project-id` in `.env`.
 4. Set `FCM_SERVICE_ACCOUNT_JSON=/path/to/key.json` (or paste the JSON as a string).
-5. To send a test notification, implement `send_pick_reminder` in `app/services/notifications.py` and call it manually.
+5. To send a test notification: log in as a user who has an `fcm_token` on file (the app calls `PUT /auth/fcm-token` on every launch), then `POST /auth/test-notification` with that user's access token. Returns 409 if the user has no token registered.
 
 ---
 
@@ -218,10 +263,10 @@ Push notifications use Firebase Cloud Messaging (FCM HTTP v1 API — **not** the
 # One-time setup
 fly auth login
 fly launch --name pickem-api --region iad --no-deploy
-fly postgres create --name pickem-db --region iad
+fly postgres create --name pickem-api-db --region iad
 
 # Attach the DB (sets DATABASE_URL secret automatically)
-fly postgres attach pickem-db
+fly postgres attach pickem-api-db
 
 # Set remaining secrets
 fly secrets set SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
@@ -229,10 +274,9 @@ fly secrets set APP_ENV=production
 
 # Deploy
 fly deploy
-
-# Run Alembic migrations on the production DB
-fly ssh console -C "alembic upgrade head"
 ```
+
+Migrations run automatically as part of every deploy — `fly.toml` sets `release_command = "alembic upgrade head"`, which Fly runs against the production DB before rolling out the new machine. You don't need to run it by hand. (`fly ssh console -C "alembic upgrade head"` is still there as a manual fallback if you ever need to apply a migration without a full deploy.)
 
 ---
 
@@ -249,6 +293,8 @@ alembic upgrade head
 ```
 
 ### Apply migrations on Fly.io
+
+Happens automatically on every `fly deploy` (see Fly.io Deployment above). Only run this by hand for out-of-band recovery:
 
 ```bash
 fly ssh console -C "alembic upgrade head"
