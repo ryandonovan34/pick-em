@@ -13,11 +13,23 @@ A full-stack NFL pick'em challenge app. Users join groups, pick games against th
 
 ---
 
+## Summary & Design Rationale
+
+PickEm started as a general "pick'em" concept with room for multiple sports and challenge formats, and was deliberately scoped down to **NFL only, season-long standings**. That narrowing shows up in the data model — `Group.sport` and `Group.mode` still exist as plain string fields rather than enums with real branching logic, because there's currently only one value for either. They're cheap to leave in place and would be the natural extension point if the scope ever widens again, but nothing in the app today treats them as configurable.
+
+A few of the bigger technical decisions, and the reasoning behind them:
+
+**Authentication — short-lived JWT + revocable opaque refresh token, not one or the other.** A single long-lived JWT would be simplest, but a compromised or lost device would have no way to be logged out remotely — a JWT is only valid as long as its own expiry, with no way to revoke it early short of a server-side blocklist (which erases the whole point of a stateless token). So auth is split in two: a JWT access token that's short-lived (30 min) and requires no DB lookup on every request, and a random opaque refresh token whose *bcrypt hash* (never the raw value) is stored server-side — logout or a compromised-device response is just deleting that row. Passwords are checked with a constant-time comparison against a dummy hash even when the email doesn't exist, so a login attempt can't be used to enumerate real accounts by response timing.
+
+**PostgreSQL, with standings materialized rather than computed on read.** The data is inherently relational — users, groups, memberships, weeks, games, and picks all have real foreign-key relationships, and grading a single game result has to atomically update every affected pick *and* every affected standings row in one transaction. That's a natural fit for a relational database with real transactions, not a document store. Standings themselves are pre-computed into their own table at result-processing time rather than aggregated from picks at read time, because the leaderboard is the highest-traffic read in the app — it should be one indexed row-scan, not a fan-out `GROUP BY` over every pick ever made. Schema changes only ever happen through Alembic migrations, checked into the repo, so "what does the schema look like" is always answerable from git history rather than tribal knowledge of manual `ALTER TABLE`s.
+
+**Fly.io, with the machine allowed to suspend when idle.** This app has real but bursty, low-overall traffic — a handful of active pick'em groups, not a high-QPS product — so an always-on machine would mostly be paying to idle. `fly.toml` sets `auto_stop_machines = "suspend"`: the machine spins down after a period of no requests and wakes back up on the next one. The trade-off we accepted knowingly: background jobs (pick reminders, the pre-kickoff odds refresh) live in an in-memory scheduler, so a job whose fire time lands exactly during a suspend window can be silently lost. We chose to accept that risk rather than pay for an always-on machine just to guarantee job delivery — see `pickem-api/README.md`'s Background Jobs section for exactly which jobs are affected. Migrations are wired into the deploy itself (`release_command = "alembic upgrade head"` in `fly.toml`), so applying a new schema is never a manual step someone has to remember to run after deploying.
+
+**Caching the Odds API aggressively, and locking the line before kickoff.** The Odds API's free tier caps out at 500 requests/month, so every avoidable call is real quota. Odds are fetched into a shared pool in Postgres — once per real matchup, not once per group — and reused across every group whose slate includes that game, with a scheduled refresh cadence (on startup, every 24h, and once more 30 minutes before each slate-added game's own kickoff) instead of fetching on every request. That last refresh also **locks** the game's spread permanently once it fires: after that point nothing can move the number again. That's a deliberate trade-off of "always show the freshest possible line" in favor of "grade picks fairly" — without a lock, a line that moved between when someone picked and when the game kicked off could flip a pick from a win to a loss against a number the member never actually saw. Freezing it right before kickoff means the number everyone picked against and the number it's graded on are guaranteed to be the same one. Full timing details are in `pickem-api/README.md`'s Background Jobs & Caching section.
+
+---
+
 ## Features
-
-### Challenge Mode
-
-- **Season Mode** — Full NFL season including playoffs and the Super Bowl. Records accumulate across the entire season.
 
 ### Groups
 
@@ -25,7 +37,6 @@ A full-stack NFL pick'em challenge app. Users join groups, pick games against th
 - Members join via a **6-character alphanumeric join code** shared by the admin.
 - A user can belong to multiple groups. Each group has fully isolated picks, results, and standings.
 - Group configuration is set at creation and includes:
-  - Sport and challenge mode
   - **Blind picks** — when enabled, other members' picks are hidden until that game's kickoff. Enforced server-side.
   - **Superdogs** — an optional feature the admin can enable (see below).
   - **Preseason / playoffs** — the admin chooses whether the group's standard weeks include the 4 preseason weeks and/or the playoffs. Weeks map directly onto the real NFL season structure (Preseason Week 1-4 → Week 1-18 → Wild Card/Divisional/Conference Championships/Super Bowl) and are created empty as soon as the group exists — the admin then picks which games from the odds pool go into each week's slate; nothing is auto-selected. All group members are notified as soon as the admin adds the first game to a week.
@@ -112,7 +123,7 @@ PostgreSQL. Key tables:
 |-------|-------------|
 | `users` | Accounts; stores FCM token (updated on each app launch) |
 | `refresh_tokens` | Hashed long-lived tokens for JWT refresh |
-| `groups` | Challenge configuration (blind_picks, superdogs) |
+| `groups` | Group configuration (blind_picks, superdogs, preseason/playoffs) |
 | `group_members` | Group membership join table |
 | `weeks` | Time-boxed pick slates; belong to a group |
 | `games` | Games sourced from the Odds API; cached with rounded spread and `odds_api_id` for dedup. `week_id=NULL` means the game is in the odds pool, not yet on a slate |
