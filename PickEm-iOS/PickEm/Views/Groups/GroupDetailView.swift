@@ -36,7 +36,12 @@ struct GroupDetailView: View {
                 SlateView(slateViewModel: slateViewModel, pickViewModel: pickViewModel)
                     .tabItem { Label("Weeks", systemImage: "calendar") }
 
-                StandingsView(viewModel: standingsViewModel, currentUserID: pickViewModel.currentUserID)
+                StandingsView(
+                    viewModel: standingsViewModel,
+                    slateViewModel: slateViewModel,
+                    pickViewModel: pickViewModel,
+                    currentUserID: pickViewModel.currentUserID
+                )
                     .tabItem { Label("Standings", systemImage: "trophy") }
             }
         }

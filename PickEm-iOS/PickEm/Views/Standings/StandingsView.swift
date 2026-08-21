@@ -3,12 +3,24 @@ private typealias ViewGroup = SwiftUI.Group
 
 struct StandingsView: View {
     var viewModel: StandingsViewModel
+    var slateViewModel: SlateViewModel
+    var pickViewModel: PickViewModel
     let currentUserID: String
 
     @Environment(\.colorScheme) private var colorScheme
 
     private var separatorColor: Color {
         colorScheme == .dark ? Color(hex: "3c494e") : Color(hex: "bac9cc")
+    }
+
+    /// The most recent week (by week number) with at least one posted
+    /// result — the one the weekly recap card summarizes. Nil until a
+    /// week actually has a result, so the card has nothing to show before
+    /// the season's first result comes in.
+    private var recapWeek: WeekGames? {
+        slateViewModel.weekGames
+            .filter { $0.games.contains { $0.resultPosted } }
+            .max { $0.week.weekNumber < $1.week.weekNumber }
     }
 
     var body: some View {
@@ -37,6 +49,16 @@ struct StandingsView: View {
     private var standingsList: some View {
         let rows = viewModel.standings
         return List {
+            if let recapWeek {
+                WeekRecapCard(
+                    week: recapWeek.week,
+                    games: recapWeek.games,
+                    standings: viewModel.standings,
+                    pickViewModel: pickViewModel
+                )
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
             ForEach(rows.indices, id: \.self) { index in
                 let standing = rows[index]
                 NavigationLink(value: standing) {
@@ -126,6 +148,15 @@ private struct StandingRow: View {
             viewModel: StandingsViewModel(
                 group: MockData.group,
                 standingsRepository: MockStandingsRepository()
+            ),
+            slateViewModel: SlateViewModel(
+                group: MockData.group,
+                gameRepository: MockGameRepository()
+            ),
+            pickViewModel: PickViewModel(
+                group: MockData.group,
+                currentUserID: MockData.currentUserID,
+                pickRepository: MockPickRepository()
             ),
             currentUserID: MockData.currentUserID
         )

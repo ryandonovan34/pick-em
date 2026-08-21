@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0D205E667186041043D81B6D /* StandingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953D8913A11755BB70F23A8F /* StandingsViewModel.swift */; };
 		0EED86B42D1FE237C7EE48C9 /* LocalCacheServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */; };
+		7223224FB0A549EF9849DBC4 /* RecapServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6858C46928C347C3A3962BAD /* RecapServiceTests.swift */; };
 		1272FB5CCAC646294668AD20 /* MockGroupRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC44B9AEBFB15D616A4FA6AD /* MockGroupRepository.swift */; };
 		141628A0D462AD4F1D818B54 /* NetworkServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */; };
 		14A1BD605CA2824A786710F8 /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CAC68255CCA378A07701DE7 /* Game.swift */; };
@@ -16,6 +17,8 @@
 		20544571774C5227AA60A15F /* MockPickRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8878EE64015EE1764C25B3A /* MockPickRepository.swift */; };
 		22134985D130995648A17DEC /* RepositoryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F365891A3A9F2AFA760567 /* RepositoryError.swift */; };
 		2724AB9B268A848DAF65212B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */; };
+		59049E961D7E4720B0C5F418 /* RecapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0607D1FDB46F5866408CB /* RecapService.swift */; };
+		3C24141BB3D14493AF312733 /* WeekRecapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D01FCAB2FEE455D8D5A2797 /* WeekRecapCard.swift */; };
 		2983F35B69834B4E8740E317 /* ChallengeMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C15D718AAB76F405474CB71 /* ChallengeMode.swift */; };
 		2A0F6611AC7E9323F0C40C11 /* PickDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7742863673DE58703A5BAD74 /* PickDTO.swift */; };
 		2EEBA7D9500A8E504D35F558 /* GroupRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B5375AC0C3AD7D8CA3DD43 /* GroupRepositoryProtocol.swift */; };
@@ -145,6 +148,8 @@
 		809FA6858D7B03BCE51BD4FE /* MockAuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAuthRepository.swift; sourceTree = "<group>"; };
 		83456E4A4FBD6F0A0520FEDE /* GameDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDTO.swift; sourceTree = "<group>"; };
 		8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		F1C0607D1FDB46F5866408CB /* RecapService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapService.swift; sourceTree = "<group>"; };
+		3D01FCAB2FEE455D8D5A2797 /* WeekRecapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRecapCard.swift; sourceTree = "<group>"; };
 		8CAC68255CCA378A07701DE7 /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 		91F365891A3A9F2AFA760567 /* RepositoryError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryError.swift; sourceTree = "<group>"; };
 		953D8913A11755BB70F23A8F /* StandingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsViewModel.swift; sourceTree = "<group>"; };
@@ -166,6 +171,7 @@
 		AA8F6C8F2FD1A65800AEE67D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AA8F6C932FD1A68900AEE67D /* OnLoadModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnLoadModifier.swift; sourceTree = "<group>"; };
 		AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCacheServiceTests.swift; sourceTree = "<group>"; };
+		6858C46928C347C3A3962BAD /* RecapServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapServiceTests.swift; sourceTree = "<group>"; };
 		AF03B1FAFFA203217B64A3C4 /* AuthRepositoryProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepositoryProtocol.swift; sourceTree = "<group>"; };
 		AFF730E36264DF5811CF9234 /* LocalCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCacheService.swift; sourceTree = "<group>"; };
 		B040B6F9766D9B9B0BE0B55E /* PickViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickViewModel.swift; sourceTree = "<group>"; };
@@ -218,6 +224,7 @@
 			children = (
 				AE0B1D10BD78421B51E57BCD /* LocalCacheServiceTests.swift */,
 				48F1E45F628BDC934DEF028B /* NetworkServiceTests.swift */,
+				6858C46928C347C3A3962BAD /* RecapServiceTests.swift */,
 			);
 			path = ServiceTests;
 			sourceTree = "<group>";
@@ -317,8 +324,17 @@
 				B4C6D8E0F1A2B3C5D6E7F8A9 /* NetworkLogger.swift */,
 				27F916F904C30C097ECCA9C1 /* NetworkService.swift */,
 				8C0621D66D1A6B869BBBF0C3 /* NotificationService.swift */,
+				451FFB1F83E24BD7823C1339 /* AI */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		451FFB1F83E24BD7823C1339 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				F1C0607D1FDB46F5866408CB /* RecapService.swift */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		5CB7DCD01277BA9CB1B562ED /* Enums */ = {
@@ -473,6 +489,7 @@
 			children = (
 				54B56E9F44AD2739161F67D2 /* PlayerHistoryView.swift */,
 				12EC813DDF70DBC6EF723C4E /* StandingsView.swift */,
+				3D01FCAB2FEE455D8D5A2797 /* WeekRecapCard.swift */,
 			);
 			path = Standings;
 			sourceTree = "<group>";
@@ -626,6 +643,8 @@
 				BBD1E36AD9B7E66DF8C2DA4D /* GroupViewModel.swift in Sources */,
 				60706BD42EB4D1557C664860 /* JoinGroupView.swift in Sources */,
 				4469F44EC582C9F872D5FAC3 /* StandingsView.swift in Sources */,
+				59049E961D7E4720B0C5F418 /* RecapService.swift in Sources */,
+				3C24141BB3D14493AF312733 /* WeekRecapCard.swift in Sources */,
 				4DF453E289C1126AEFCF8FE7 /* LiveAuthRepository.swift in Sources */,
 				2F7F461C59E130F0859E2EA4 /* LiveGameRepository.swift in Sources */,
 				B55B17BEB3FFE7329E0BA73A /* LiveGroupRepository.swift in Sources */,
@@ -694,6 +713,7 @@
 				46463A713A0C97CDF3EAC569 /* PickResultTests.swift in Sources */,
 				141628A0D462AD4F1D818B54 /* NetworkServiceTests.swift in Sources */,
 				0EED86B42D1FE237C7EE48C9 /* LocalCacheServiceTests.swift in Sources */,
+				7223224FB0A549EF9849DBC4 /* RecapServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
