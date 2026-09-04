@@ -2,13 +2,26 @@ import SwiftUI
 
 struct GroupDetailView: View {
     private let group: Group
+    var groupViewModel: GroupViewModel
     @State private var slateViewModel: SlateViewModel
     @State private var pickViewModel: PickViewModel
     @State private var standingsViewModel: StandingsViewModel
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.dismiss) private var dismiss
+    @State private var showDeleteConfirmation = false
+    @State private var showLeaveConfirmation = false
 
-    init(group: Group, dependencies: AppDependencies) {
+    private var currentUserID: String {
+        dependencies.authViewModel.currentUser?.id ?? ""
+    }
+
+    private var isAdmin: Bool {
+        group.adminID == currentUserID
+    }
+
+    init(group: Group, groupViewModel: GroupViewModel, dependencies: AppDependencies) {
         self.group = group
+        self.groupViewModel = groupViewModel
         let currentUserID = dependencies.authViewModel.currentUser?.id ?? ""
         _slateViewModel = State(wrappedValue: SlateViewModel(
             group: group,
@@ -74,6 +87,52 @@ struct GroupDetailView: View {
                     Label("Invite", systemImage: "person.badge.plus")
                 }
             }
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    if isAdmin {
+                        Button("Delete Group", systemImage: "trash", role: .destructive) {
+                            showDeleteConfirmation = true
+                        }
+                    } else {
+                        Button("Leave Group", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                            showLeaveConfirmation = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(AdaptiveColor.pePrimary)
+                }
+            }
+        }
+        .confirmationDialog(
+            "Delete \"\(group.name)\"?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Group", role: .destructive) {
+                Task {
+                    if await groupViewModel.deleteGroup(groupID: group.id) {
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("This permanently deletes the group, its weeks, picks, and standings for every member. This can't be undone.")
+        }
+        .confirmationDialog(
+            "Leave \"\(group.name)\"?",
+            isPresented: $showLeaveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Leave Group", role: .destructive) {
+                Task {
+                    if await groupViewModel.leaveGroup(groupID: group.id) {
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("You'll need the join code to rejoin later.")
         }
         .onLoad { await initialLoad() }
         .onChange(of: dependencies.authViewModel.currentUser) { _, user in
@@ -137,6 +196,10 @@ private struct JoinCodeBanner: View {
 
 #Preview {
     NavigationStack {
-        GroupDetailView(group: MockData.group, dependencies: AppDependencies())
+        GroupDetailView(
+            group: MockData.group,
+            groupViewModel: GroupViewModel(groupRepository: MockGroupRepository()),
+            dependencies: AppDependencies()
+        )
     }
 }

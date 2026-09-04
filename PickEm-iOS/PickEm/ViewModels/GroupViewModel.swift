@@ -69,4 +69,34 @@ final class GroupViewModel {
             return nil
         }
     }
+
+    @discardableResult
+    func deleteGroup(groupID: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await groupRepository.deleteGroup(groupID: groupID)
+            groups.removeAll { $0.id == groupID }
+            return true
+        } catch {
+            errorMessage = "Failed to delete group: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    @discardableResult
+    func leaveGroup(groupID: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await groupRepository.leaveGroup(groupID: groupID)
+            groups.removeAll { $0.id == groupID }
+            return true
+        } catch {
+            errorMessage = "Failed to leave group: \(error.localizedDescription)"
+            return false
+        }
+    }
 }

@@ -53,4 +53,14 @@ final class LiveGroupRepository: GroupRepositoryProtocol {
     func removeMember(groupID: String, userID: String) async throws {
         try await network.delete("/groups/\(groupID)/members/\(userID)")
     }
+
+    func deleteGroup(groupID: String) async throws {
+        try await network.delete("/groups/\(groupID)")
+    }
+
+    func leaveGroup(groupID: String) async throws {
+        struct Empty: Encodable {}
+        struct EmptyResponseBody: Decodable {}
+        let _: EmptyResponseBody = try await network.post("/groups/\(groupID)/leave", body: Empty())
+    }
 }

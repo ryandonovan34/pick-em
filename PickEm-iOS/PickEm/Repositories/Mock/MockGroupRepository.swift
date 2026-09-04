@@ -52,4 +52,12 @@ final class MockGroupRepository: GroupRepositoryProtocol {
     }
 
     func removeMember(groupID: String, userID: String) async throws {}
+
+    func deleteGroup(groupID: String) async throws {
+        groups.removeAll { $0.id == groupID }
+    }
+
+    func leaveGroup(groupID: String) async throws {
+        groups.removeAll { $0.id == groupID }
+    }
 }

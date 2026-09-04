@@ -21,9 +21,9 @@ class Pick(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id")
-    game_id: uuid.UUID = Field(foreign_key="games.id")
-    group_id: uuid.UUID = Field(foreign_key="groups.id")
+    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE")
+    game_id: uuid.UUID = Field(foreign_key="games.id", ondelete="CASCADE")
+    group_id: uuid.UUID = Field(foreign_key="groups.id", ondelete="CASCADE")
     picked_team: str = Field(max_length=100)
     # True only when the user has declared this as a superdog (underdog to win outright).
     is_superdog: bool = Field(default=False)

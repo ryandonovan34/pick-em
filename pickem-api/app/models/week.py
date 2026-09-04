@@ -22,7 +22,7 @@ class Week(SQLModel, table=True):
     __tablename__ = "weeks"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    group_id: uuid.UUID = Field(foreign_key="groups.id")
+    group_id: uuid.UUID = Field(foreign_key="groups.id", ondelete="CASCADE")
     week_number: int
     label: str = Field(max_length=100)
     # Monday of the calendar week this slate covers (UTC date).

@@ -16,4 +16,6 @@ protocol GroupRepositoryProtocol {
     ) async throws -> Group
     func joinGroup(joinCode: String) async throws -> Group
     func removeMember(groupID: String, userID: String) async throws
+    func deleteGroup(groupID: String) async throws
+    func leaveGroup(groupID: String) async throws
 }

@@ -49,6 +49,6 @@ class GroupMember(SQLModel, table=True):
 
     __tablename__ = "group_members"
 
-    group_id: uuid.UUID = Field(foreign_key="groups.id", primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
+    group_id: uuid.UUID = Field(foreign_key="groups.id", primary_key=True, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True, ondelete="CASCADE")
     joined_at: datetime = Field(default_factory=_utc_now)

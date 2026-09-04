@@ -11,5 +11,5 @@ class SlateGame(SQLModel, table=True):
 
     __tablename__ = "slate_games"
 
-    week_id: uuid.UUID = Field(foreign_key="weeks.id", primary_key=True)
-    game_id: uuid.UUID = Field(foreign_key="games.id", primary_key=True)
+    week_id: uuid.UUID = Field(foreign_key="weeks.id", primary_key=True, ondelete="CASCADE")
+    game_id: uuid.UUID = Field(foreign_key="games.id", primary_key=True, ondelete="CASCADE")

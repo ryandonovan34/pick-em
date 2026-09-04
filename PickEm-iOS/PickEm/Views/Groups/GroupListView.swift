@@ -33,7 +33,7 @@ struct GroupListView: View {
         .scrollContentBackground(.hidden)
         .background(AdaptiveColor.peBackground)
         .navigationDestination(for: Group.self) { group in
-            GroupDetailView(group: group, dependencies: dependencies)
+            GroupDetailView(group: group, groupViewModel: viewModel, dependencies: dependencies)
         }
         .navigationTitle("My Groups")
         .peNavBar()

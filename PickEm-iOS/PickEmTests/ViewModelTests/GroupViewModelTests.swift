@@ -40,4 +40,24 @@ final class GroupViewModelTests: XCTestCase {
         XCTAssertNil(group)
         XCTAssertNotNil(viewModel.errorMessage)
     }
+
+    func testDeleteGroup_removesFromList() async {
+        await viewModel.loadGroups()
+        XCTAssertTrue(viewModel.groups.contains { $0.id == MockData.group.id })
+
+        let success = await viewModel.deleteGroup(groupID: MockData.group.id)
+        XCTAssertTrue(success)
+        XCTAssertFalse(viewModel.groups.contains { $0.id == MockData.group.id })
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func testLeaveGroup_removesFromList() async {
+        await viewModel.loadGroups()
+        XCTAssertTrue(viewModel.groups.contains { $0.id == MockData.group.id })
+
+        let success = await viewModel.leaveGroup(groupID: MockData.group.id)
+        XCTAssertTrue(success)
+        XCTAssertFalse(viewModel.groups.contains { $0.id == MockData.group.id })
+        XCTAssertNil(viewModel.errorMessage)
+    }
 }

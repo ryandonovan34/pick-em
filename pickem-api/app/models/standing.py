@@ -29,8 +29,8 @@ class Standing(SQLModel, table=True):
     __tablename__ = "standings"
 
     # Composite primary key — one row per (user, group) pair.
-    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
-    group_id: uuid.UUID = Field(foreign_key="groups.id", primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True, ondelete="CASCADE")
+    group_id: uuid.UUID = Field(foreign_key="groups.id", primary_key=True, ondelete="CASCADE")
     wins: int = Field(default=0)
     losses: int = Field(default=0)
     # How many times this user scored a superdog win (3 pts each).

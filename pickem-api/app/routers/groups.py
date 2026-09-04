@@ -186,3 +186,51 @@ def remove_member(
     if membership:
         session.delete(membership)
         session.commit()
+
+
+@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_group(
+    group_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """
+    Delete a group. Only the admin can call this. Members, weeks, games,
+    picks, and standings all cascade-delete at the DB level (see migration
+    001's ondelete="CASCADE" foreign keys), so nothing else needs cleanup here.
+    """
+    group = _require_member(group_id, current_user, session)
+    _require_admin(group, current_user)
+
+    session.delete(group)
+    session.commit()
+
+
+@router.post("/{group_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+def leave_group(
+    group_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """
+    Leave a group. Any member except the admin can call this — the admin
+    must delete the group instead of leaving it (mirrors the guard in
+    remove_member that blocks the admin from removing themselves).
+    """
+    group = _require_member(group_id, current_user, session)
+
+    if group.admin_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The admin cannot leave the group. Delete the group instead.",
+        )
+
+    membership = session.exec(
+        select(GroupMember).where(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == current_user.id,
+        )
+    ).first()
+    if membership:
+        session.delete(membership)
+        session.commit()
