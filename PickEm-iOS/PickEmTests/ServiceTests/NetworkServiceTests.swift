@@ -9,6 +9,7 @@ final class NetworkServiceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         tokenStore = TokenStore()
+        tokenStore.clear() // wipe any leftover Keychain state from a prior test run
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
@@ -18,6 +19,7 @@ final class NetworkServiceTests: XCTestCase {
 
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
+        tokenStore.clear()
         sut = nil
         tokenStore = nil
         super.tearDown()
@@ -78,6 +80,62 @@ final class NetworkServiceTests: XCTestCase {
         } catch {
             XCTFail("Expected .decodingError, got \(error)"); return
         }
+    }
+
+    // MARK: - 401 refresh handling
+
+    func testGet401_refreshTokenRejected401_clearsStoredTokens() async {
+        tokenStore.save(accessToken: "expired-token", refreshToken: "bad-refresh-token")
+        MockURLProtocol.requestHandler = { [weak self] request in
+            guard let self else { fatalError() }
+            if request.url?.path == "/auth/refresh" {
+                return (self.makeHTTPResponse(statusCode: 401), Data(#"{"detail":"Invalid refresh token"}"#.utf8))
+            }
+            return (self.makeHTTPResponse(statusCode: 401), Data())
+        }
+        await assertThrows(RepositoryError.unauthorized) {
+            let _: TestResponse = try await self.sut.get("/test")
+        }
+        // The refresh token really was invalid — the session should end.
+        XCTAssertNil(tokenStore.accessToken)
+        XCTAssertNil(tokenStore.refreshToken)
+    }
+
+    func testGet401_refreshCallFailsWith5xx_doesNotClearStoredTokens() async {
+        tokenStore.save(accessToken: "expired-token", refreshToken: "still-good-refresh-token")
+        MockURLProtocol.requestHandler = { [weak self] request in
+            guard let self else { fatalError() }
+            if request.url?.path == "/auth/refresh" {
+                return (self.makeHTTPResponse(statusCode: 503), Data())
+            }
+            return (self.makeHTTPResponse(statusCode: 401), Data())
+        }
+        await assertThrows(RepositoryError.unauthorized) {
+            let _: TestResponse = try await self.sut.get("/test")
+        }
+        // A transient failure refreshing (server hiccup) is not proof the session is over —
+        // the stored tokens must survive so the next request can try again.
+        XCTAssertEqual(tokenStore.accessToken, "expired-token")
+        XCTAssertEqual(tokenStore.refreshToken, "still-good-refresh-token")
+    }
+
+    func testGet401_refreshSucceeds_retriesOriginalRequestAndSavesNewToken() async throws {
+        tokenStore.save(accessToken: "expired-token", refreshToken: "good-refresh-token")
+        var testEndpointCallCount = 0
+        MockURLProtocol.requestHandler = { [weak self] request in
+            guard let self else { fatalError() }
+            if request.url?.path == "/auth/refresh" {
+                return (self.makeHTTPResponse(statusCode: 200), Data(#"{"access_token":"new-token"}"#.utf8))
+            }
+            testEndpointCallCount += 1
+            if testEndpointCallCount == 1 {
+                return (self.makeHTTPResponse(statusCode: 401), Data())
+            }
+            return (self.makeHTTPResponse(statusCode: 200), Data(#"{"value":"hello"}"#.utf8))
+        }
+        let response: TestResponse = try await sut.get("/test")
+        XCTAssertEqual(response.value, "hello")
+        XCTAssertEqual(tokenStore.accessToken, "new-token")
     }
 
     // MARK: - Request headers

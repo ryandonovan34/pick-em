@@ -7,14 +7,22 @@ final class AuthViewModelTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        viewModel = AuthViewModel(authRepository: MockAuthRepository(), tokenStore: TokenStore())
+        let tokenStore = TokenStore()
+        tokenStore.clear() // wipe any leftover Keychain state from a prior test run
+        viewModel = AuthViewModel(authRepository: MockAuthRepository(), tokenStore: tokenStore)
+    }
+
+    override func tearDown() {
+        viewModel = nil
+        TokenStore().clear()
+        super.tearDown()
     }
 
     func testLogin_setsIsAuthenticated() async {
         XCTAssertFalse(viewModel.isAuthenticated)
         await viewModel.login(email: "alice@example.com", password: "password")
         XCTAssertTrue(viewModel.isAuthenticated)
-        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.loginErrorMessage)
     }
 
     func testLogin_setsCurrentUser() async {
@@ -26,7 +34,7 @@ final class AuthViewModelTests: XCTestCase {
     func testRegister_setsIsAuthenticated() async {
         await viewModel.register(email: "new@example.com", displayName: "New User", password: "pass123")
         XCTAssertTrue(viewModel.isAuthenticated)
-        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.registerErrorMessage)
     }
 
     func testLogout_clearsState() async {

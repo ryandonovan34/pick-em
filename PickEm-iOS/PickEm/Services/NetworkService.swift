@@ -62,7 +62,8 @@ final class NetworkService {
 
         // On 401, try a token refresh and retry the original request once.
         if http.statusCode == 401 {
-            if let newToken = try? await refreshAccessToken() {
+            do {
+                let newToken = try await refreshAccessToken()
                 // Dispatch to main actor so @Observable TokenStore mutations
                 // trigger SwiftUI re-renders on the correct thread.
                 await MainActor.run { tokenStore.saveAccessToken(newToken) }
@@ -71,9 +72,17 @@ final class NetworkService {
                 let (data2, response2) = try await session.data(for: retried)
                 guard let http2 = response2 as? HTTPURLResponse else { throw RepositoryError.unknown }
                 return try decode(http2, data: data2)
-            } else if tokenStore.accessToken != nil {
-                // Had a session but both the access and refresh tokens are invalid — clear to force re-login.
-                await MainActor.run { tokenStore.clear() }
+            } catch RepositoryError.unauthorized {
+                // The refresh token itself was rejected (expired/revoked) — the session
+                // really is over, so clear it to force re-login.
+                if tokenStore.accessToken != nil {
+                    await MainActor.run { tokenStore.clear() }
+                }
+            } catch {
+                // Refresh failed for some other reason (network blip, backend 5xx, a
+                // malformed response) — not proof the session is invalid. Leave the
+                // stored tokens alone and just let this one request fail; the next
+                // request gets to try refreshing again instead of forcing a logout.
             }
         }
 
@@ -110,8 +119,20 @@ final class NetworkService {
         struct Body: Encodable { let refresh_token: String }
         struct Response: Decodable { let access_token: String }
         let req = try buildRequest(method: "POST", path: "auth/refresh", body: Body(refresh_token: refreshToken))
-        let (data, _) = try await session.data(for: req)
-        return try JSONDecoder().decode(Response.self, from: data).access_token
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw RepositoryError.unknown }
+        if http.statusCode == 401 {
+            // The refresh token was rejected — this is the one case that should end the session.
+            throw RepositoryError.unauthorized
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw RepositoryError.serverError(http.statusCode, "Token refresh failed")
+        }
+        do {
+            return try JSONDecoder().decode(Response.self, from: data).access_token
+        } catch {
+            throw RepositoryError.decodingError(error)
+        }
     }
 }
 
