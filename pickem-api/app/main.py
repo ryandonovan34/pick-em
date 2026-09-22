@@ -7,7 +7,7 @@ Registers all routers and manages application lifecycle (startup/shutdown).
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from sqlmodel import SQLModel
 
 from app.config import settings
@@ -50,6 +50,25 @@ app = FastAPI(
     redoc_url="/redoc" if settings.is_development else None,
     lifespan=lifespan,
 )
+
+@app.middleware("http")
+async def _no_store_cache_headers(request: Request, call_next):
+    """
+    Every response here is dynamic, per-user JSON — nothing should ever be
+    cached. Without an explicit Cache-Control header, HTTP caches (including
+    iOS's on-disk URLCache, which survives app relaunches) are free to apply
+    their own heuristics to a 200 GET response and serve it back stale
+    indefinitely. That's exactly what happened with pick history: the first
+    request for a user's history — made back when their picks were still
+    ungraded — legitimately got `[]`, and that response got cached and kept
+    being served long after the picks were actually graded, surviving even a
+    full force-quit/relaunch of the app (only a reinstall cleared it, since
+    only that wipes the on-disk cache).
+    """
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 app.include_router(auth.router,               prefix="/auth",   tags=["Auth"])
 app.include_router(groups.router,             prefix="/groups", tags=["Groups"])
