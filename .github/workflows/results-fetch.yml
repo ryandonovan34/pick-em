@@ -1,0 +1,24 @@
+name: Fetch and grade results
+
+# Drives pickem-api's results-grading job from outside the app, since the
+# Fly.io machine suspends between requests and can't run an in-process
+# scheduled job reliably (see app/routers/admin.py and
+# app/services/scheduler.py::fetch_and_process_results for the full story).
+#
+# Cadence: every 30 minutes on NFL game days (Thu/Sun/Mon), plus once a day
+# the rest of the week as a catch-all for stragglers (Saturday games late in
+# the season, rescheduled games, etc). Cron schedules are UTC.
+on:
+  schedule:
+    - cron: "*/30 * * * 0,1,4"
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger results fetch
+        run: |
+          curl -sf -X POST https://pickem-api.fly.dev/admin/results/fetch \
+            -H "X-Admin-Key: ${{ secrets.ADMIN_TRIGGER_KEY }}"
