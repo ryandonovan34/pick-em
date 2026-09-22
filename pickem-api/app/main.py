@@ -12,7 +12,7 @@ from sqlmodel import SQLModel
 
 from app.config import settings
 from app.database import engine
-from app.routers import auth, dev, games, groups, picks, standings
+from app.routers import admin, auth, dev, games, groups, picks, standings
 from app.services import scheduler as sched
 
 # Import models so SQLModel.metadata knows about all tables.
@@ -58,6 +58,7 @@ app.include_router(picks.router,              prefix="/picks",  tags=["Picks"])
 app.include_router(picks.group_picks_router,                    tags=["Picks"])
 app.include_router(standings.router,                            tags=["Standings"])
 app.include_router(dev.router,                prefix="/dev",    tags=["Dev"])
+app.include_router(admin.router,              prefix="/admin",  tags=["Admin"])
 
 
 @app.get("/health", tags=["Health"])

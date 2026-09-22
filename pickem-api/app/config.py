@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     ODDS_API_BASE_URL: str = "https://api.the-odds-api.com"
     ODDS_CACHE_TTL_MINUTES: int = 120
 
+    # Shared secret an external scheduler (see .github/workflows/results-fetch.yml)
+    # presents via the X-Admin-Key header to trigger /admin/* endpoints. Empty
+    # by default, which fails the header check closed — must be explicitly set.
+    ADMIN_TRIGGER_KEY: str = ""
+
     FCM_PROJECT_ID: str = ""
     FCM_SERVICE_ACCOUNT_JSON: str = ""
 

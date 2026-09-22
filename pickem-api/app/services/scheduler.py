@@ -28,7 +28,6 @@ def start() -> None:
         scheduler.start()
         logger.info("Scheduler started.")
         _schedule_odds_refresh()
-        _schedule_results_fetch()
 
 
 def shutdown() -> None:
@@ -177,20 +176,6 @@ def _schedule_odds_refresh() -> None:
     logger.info("Odds refresh scheduled (startup + every 24h).")
 
 
-def _schedule_results_fetch() -> None:
-    from app.config import settings
-    if not settings.ODDS_API_KEY:
-        return
-    scheduler.add_job(
-        _fetch_and_process_results,
-        "interval",
-        minutes=30,
-        id="results_fetch",
-        replace_existing=True,
-    )
-    logger.info("Results fetch scheduled (every 30 min).")
-
-
 # ── Internal job functions ────────────────────────────────────────────────────
 
 def _refresh_odds_job() -> None:
@@ -229,7 +214,7 @@ def _refresh_and_lock_game(game_id: uuid.UUID, sport: str) -> None:
 
 def _relevant_api_sport_key(kickoff_at: datetime) -> str:
     """Which real Odds API key a game's results actually live under, based
-    on its own kickoff date — used by _fetch_and_process_results to avoid
+    on its own kickoff date — used by fetch_and_process_results to avoid
     always querying both the regular-season+playoffs and separate preseason
     scores endpoints on every poll regardless of whether any preseason game
     is actually pending (which wastes half of every poll's Odds API credit
@@ -311,10 +296,21 @@ def _send_slate_admin_reminder(group_id: uuid.UUID) -> None:
             notifications.send_slate_reminder_to_admin(admin.fcm_token, group.name)
 
 
-def _fetch_and_process_results() -> None:
+def fetch_and_process_results() -> int:
     """
     Poll the Odds API scores endpoint for completed games, process results,
     and send FCM notifications to affected groups.
+
+    Called from POST /admin/results/fetch (see app/routers/admin.py), on a
+    schedule driven by an external trigger (.github/workflows/results-fetch.yml)
+    rather than an in-process APScheduler interval job — the Fly.io machine
+    suspends between requests, so an in-memory interval job silently stops
+    firing for most of the week instead of erroring loudly. An external
+    trigger both wakes the machine on demand and lets the polling cadence be
+    tuned (frequent on NFL game days, a daily catch-all otherwise) without
+    needing the process to have stayed up continuously.
+
+    Returns the number of games newly processed.
     """
     from app.database import engine
     from app.models import Game, Group, GroupMember, User, Week
@@ -324,6 +320,7 @@ def _fetch_and_process_results() -> None:
     from sqlmodel import Session, select
 
     now = utc_now()
+    processed_count = 0
 
     with Session(engine) as session:
         # Only process games that are on at least one slate (have a slate_games row).
@@ -338,7 +335,7 @@ def _fetch_and_process_results() -> None:
         ).all()
 
         if not pending:
-            return
+            return 0
 
         # Fetch scores only from the real Odds API key each pending game
         # actually needs (see _relevant_api_sport_key) — NOT a blind
@@ -368,6 +365,7 @@ def _fetch_and_process_results() -> None:
             except Exception:
                 logger.exception("Failed to process result for game %s", game.id)
                 continue
+            processed_count += 1
 
             # Notify every group that has this game on a slate.
             try:
@@ -405,3 +403,5 @@ def _fetch_and_process_results() -> None:
 
             except Exception:
                 logger.exception("Failed to send result notifications for game %s", game.id)
+
+    return processed_count

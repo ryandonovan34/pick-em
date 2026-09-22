@@ -284,7 +284,7 @@ class TestLineCheckLockWording:
 
 class TestRelevantApiSportKey:
     """
-    Regression: _fetch_and_process_results used to always query both the
+    Regression: fetch_and_process_results used to always query both the
     regular-season+playoffs and separate preseason scores endpoints on
     every poll, regardless of whether any preseason game was actually
     pending — wasting half of every poll's Odds API credit budget for the
