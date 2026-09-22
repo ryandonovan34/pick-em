@@ -15,16 +15,26 @@ final class LiveGameRepository: GameRepositoryProtocol {
     }
 
     func fetchGames(groupID: String, weekID: String) async throws -> [Game] {
+        // Network-first: a game's score/result changes the moment it's
+        // graded, and re-fetching from our own backend doesn't touch the
+        // Odds API's free-tier budget (that's governed separately, entirely
+        // server-side, by ODDS_CACHE_TTL_MINUTES) — so there's no reason to
+        // prefer a potentially-stale local copy here. The cache is purely an
+        // offline fallback now, not a way to avoid the round trip.
         let cacheKey = "games:\(weekID)"
-        if let cached = await MainActor.run(body: { cache.loadGames(groupID: groupID, weekID: weekID) }) {
-            NetworkLogger.logCache(hit: true, for: cacheKey)
-            return cached
+        do {
+            let dtos: [GameDTO] = try await network.get("/groups/\(groupID)/weeks/\(weekID)/games")
+            let games = dtos.map { $0.toDomain() }
+            await MainActor.run { cache.saveGames(games, groupID: groupID, weekID: weekID) }
+            NetworkLogger.logCache(hit: false, for: cacheKey)
+            return games
+        } catch {
+            if let cached = await MainActor.run(body: { cache.loadGames(groupID: groupID, weekID: weekID) }) {
+                NetworkLogger.logCache(hit: true, for: cacheKey)
+                return cached
+            }
+            throw error
         }
-        NetworkLogger.logCache(hit: false, for: cacheKey)
-        let dtos: [GameDTO] = try await network.get("/groups/\(groupID)/weeks/\(weekID)/games")
-        let games = dtos.map { $0.toDomain() }
-        await MainActor.run { cache.saveGames(games, groupID: groupID, weekID: weekID) }
-        return games
     }
 
     func fetchAvailableOdds(sport: Sport, groupID: String?, weekID: String?) async throws -> [Game] {
