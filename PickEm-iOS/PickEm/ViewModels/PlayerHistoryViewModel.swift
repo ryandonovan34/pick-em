@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Pairs a graded pick with the running win/loss tally through that pick —
 /// wins count superdog wins as +3, matching how the backend's standings
@@ -49,8 +50,17 @@ final class PlayerHistoryViewModel {
         defer { isLoading = false }
         do {
             entries = try await pickRepository.fetchPickHistory(groupID: group.id, userID: userID)
+            Self.diagnosticLogger.debug("PlayerHistory OK group=\(self.group.id, privacy: .public) user=\(self.userID, privacy: .public) count=\(self.entries.count, privacy: .public)")
         } catch {
             errorMessage = "Failed to fetch pick history: \(error.localizedDescription)"
+            Self.diagnosticLogger.error("PlayerHistory FAILED group=\(self.group.id, privacy: .public) user=\(self.userID, privacy: .public) error=\(String(describing: error), privacy: .public)")
         }
     }
+
+    // TEMPORARY — diagnosing a report of "No Graded Picks Yet" despite the
+    // server having fully graded data for every user tested. Remove once
+    // root-caused. Explicitly public: only UUIDs and a count, nothing
+    // sensitive, unlike NetworkLogger's full request/response bodies (which
+    // include passwords/tokens and must stay private).
+    private static let diagnosticLogger = Logger(subsystem: "com.pickem", category: "PlayerHistoryDebug")
 }
