@@ -43,6 +43,14 @@ final class NetworkService {
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        // Every response is dynamic, per-user data — never read (or write) it
+        // to iOS's on-disk URLCache. Without this, a response cached before
+        // this fix existed (e.g. an empty pick-history list fetched before
+        // results were graded) would keep being served back stale forever,
+        // surviving even a full force-quit/relaunch — only bypassing the
+        // cache outright, not just sending Cache-Control: no-store from the
+        // server, fixes it for requests already poisoned on an existing install.
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = tokenStore.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

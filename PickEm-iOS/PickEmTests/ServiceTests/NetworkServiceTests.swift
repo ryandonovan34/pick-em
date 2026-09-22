@@ -82,6 +82,18 @@ final class NetworkServiceTests: XCTestCase {
         }
     }
 
+    func testGet_bypassesLocalURLCache() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (self.makeHTTPResponse(statusCode: 200), Data(#"{"value":"x"}"#.utf8))
+        }
+        let _: TestResponse = try await sut.get("/test")
+        // Never read (or write) a previously cached response for dynamic,
+        // per-user API data — see NetworkService.buildRequest for why.
+        XCTAssertEqual(capturedRequest?.cachePolicy, .reloadIgnoringLocalCacheData)
+    }
+
     // MARK: - 401 refresh handling
 
     func testGet401_refreshTokenRejected401_clearsStoredTokens() async {
