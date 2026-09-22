@@ -2,10 +2,9 @@ import Foundation
 import OSLog
 
 /// Pairs a graded pick with the running win/loss tally through that pick —
-/// wins count superdog wins as +3, matching how the backend's standings
-/// record is actually computed (Standing.record/winPercentage on iOS don't
-/// weight superdog wins the same way, but this view exists specifically to
-/// verify that real record, so it must match it).
+/// wins count superdog wins as +3, matching Standing.record/winPercentage
+/// and the backend's own standings computation
+/// (pickem-api/app/schemas/standing.py).
 struct PlayerHistoryRow: Identifiable {
     let entry: PickHistoryEntry
     let winsAfter: Int

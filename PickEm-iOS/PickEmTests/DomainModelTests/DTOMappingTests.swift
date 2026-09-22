@@ -112,7 +112,8 @@ final class DTOMappingTests: XCTestCase {
         XCTAssertEqual(standing.losses, 3)
         XCTAssertEqual(standing.superdogWins, 1)
         XCTAssertEqual(standing.superdogsUsed, 1)
-        XCTAssertEqual(standing.winPercentage, 0.7, accuracy: 0.001)
+        // 7 wins + 1 superdog win (worth 3) = 10 effective wins over 13 games.
+        XCTAssertEqual(standing.winPercentage, 10.0 / 13.0, accuracy: 0.001)
     }
 
     // MARK: - UserDTO
