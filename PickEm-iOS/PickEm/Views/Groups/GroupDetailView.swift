@@ -68,12 +68,10 @@ struct GroupDetailView: View {
         }
         .navigationDestination(for: Standing.self) { standing in
             PlayerHistoryView(
-                viewModel: PlayerHistoryViewModel(
-                    group: group,
-                    userID: standing.userID,
-                    displayName: standing.displayName,
-                    pickRepository: dependencies.pickRepository
-                )
+                group: group,
+                userID: standing.userID,
+                displayName: standing.displayName,
+                pickRepository: dependencies.pickRepository
             )
         }
         .navigationTitle(group.name.uppercased())

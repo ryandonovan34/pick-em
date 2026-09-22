@@ -1,7 +1,20 @@
 import SwiftUI
 
 struct PlayerHistoryView: View {
-    var viewModel: PlayerHistoryViewModel
+    @State private var viewModel: PlayerHistoryViewModel
+
+    /// Owns its view model via @State rather than receiving an
+    /// already-constructed instance, so the model's identity survives
+    /// however many times SwiftUI re-invokes the enclosing
+    /// navigationDestination(for:) closure — a plain `var` property was
+    /// getting silently replaced by a fresh, still-empty instance after the
+    /// original one had already finished loading, discarding the fetched
+    /// data on screen while `.onLoad`'s once-only guard prevented refetching.
+    init(group: Group, userID: String, displayName: String, pickRepository: any PickRepositoryProtocol) {
+        _viewModel = State(wrappedValue: PlayerHistoryViewModel(
+            group: group, userID: userID, displayName: displayName, pickRepository: pickRepository
+        ))
+    }
 
     var body: some View {
         SwiftUI.Group {
@@ -148,12 +161,10 @@ private struct PlayerHistoryRowView: View {
 #Preview {
     NavigationStack {
         PlayerHistoryView(
-            viewModel: PlayerHistoryViewModel(
-                group: MockData.group,
-                userID: MockData.currentUserID,
-                displayName: "Alice",
-                pickRepository: MockPickRepository()
-            )
+            group: MockData.group,
+            userID: MockData.currentUserID,
+            displayName: "Alice",
+            pickRepository: MockPickRepository()
         )
     }
 }
