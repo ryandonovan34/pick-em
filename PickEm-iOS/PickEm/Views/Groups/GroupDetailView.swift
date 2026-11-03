@@ -71,7 +71,9 @@ struct GroupDetailView: View {
                 group: group,
                 userID: standing.userID,
                 displayName: standing.displayName,
-                pickRepository: dependencies.pickRepository
+                currentUserID: currentUserID,
+                pickRepository: dependencies.pickRepository,
+                onMissedPickSet: { await standingsViewModel.refresh() }
             )
         }
         .navigationTitle(group.name.uppercased())

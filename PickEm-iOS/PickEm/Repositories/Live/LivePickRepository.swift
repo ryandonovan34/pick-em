@@ -37,4 +37,10 @@ final class LivePickRepository: PickRepositoryProtocol {
         let dto: PickDTO = try await network.put("/picks/\(id)", body: UpdatePickBody(picked_team: pickedTeam, is_superdog: isSuperdog))
         return dto.toDomain()
     }
+
+    func setMissedPick(groupID: String, pickID: String, pickedTeam: String) async throws -> Pick {
+        struct SetMissedPickBody: Encodable { let picked_team: String }
+        let dto: PickDTO = try await network.put("/groups/\(groupID)/picks/\(pickID)/missed", body: SetMissedPickBody(picked_team: pickedTeam))
+        return dto.toDomain()
+    }
 }

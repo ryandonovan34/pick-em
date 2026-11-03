@@ -19,18 +19,37 @@ final class PlayerHistoryViewModel {
     var entries: [PickHistoryEntry] = []
     var isLoading = false
     var errorMessage: String?
+    var isSettingMissedPick = false
+    /// Separate from errorMessage, which only shows when there's no history to display.
+    var missedPickErrorMessage: String?
 
     let group: Group
     let userID: String
     let displayName: String
 
+    private let currentUserID: String
     private let pickRepository: any PickRepositoryProtocol
+    private let onMissedPickSet: () async -> Void
 
-    init(group: Group, userID: String, displayName: String, pickRepository: any PickRepositoryProtocol) {
+    init(
+        group: Group,
+        userID: String,
+        displayName: String,
+        currentUserID: String,
+        pickRepository: any PickRepositoryProtocol,
+        onMissedPickSet: @escaping () async -> Void = {}
+    ) {
         self.group = group
         self.userID = userID
         self.displayName = displayName
+        self.currentUserID = currentUserID
         self.pickRepository = pickRepository
+        self.onMissedPickSet = onMissedPickSet
+    }
+
+    /// Only the group admin, and only for other members' missed picks.
+    var canSetMissedPicks: Bool {
+        group.adminID == currentUserID && userID != currentUserID
     }
 
     var rows: [PlayerHistoryRow] {
@@ -54,6 +73,20 @@ final class PlayerHistoryViewModel {
             errorMessage = "Failed to fetch pick history: \(error.localizedDescription)"
             Self.diagnosticLogger.error("PlayerHistory FAILED group=\(self.group.id, privacy: .public) user=\(self.userID, privacy: .public) error=\(String(describing: error), privacy: .public)")
         }
+    }
+
+    func setMissedPick(_ entry: PickHistoryEntry, pickedTeam: String) async {
+        isSettingMissedPick = true
+        missedPickErrorMessage = nil
+        defer { isSettingMissedPick = false }
+        do {
+            _ = try await pickRepository.setMissedPick(groupID: group.id, pickID: entry.pickID, pickedTeam: pickedTeam)
+        } catch {
+            missedPickErrorMessage = "Failed to set pick: \(error.localizedDescription)"
+            return
+        }
+        await loadHistory()
+        await onMissedPickSet()
     }
 
     // TEMPORARY — diagnosing a report of "No Graded Picks Yet" despite the

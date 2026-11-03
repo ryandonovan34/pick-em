@@ -11,6 +11,7 @@ final class PlayerHistoryViewModelTests: XCTestCase {
             group: MockData.group,
             userID: MockData.currentUserID,
             displayName: "Alice",
+            currentUserID: MockData.currentUserID,
             pickRepository: MockPickRepository()
         )
     }
@@ -52,6 +53,79 @@ final class PlayerHistoryViewModelTests: XCTestCase {
     func testRows_emptyEntries_producesEmptyRows() {
         viewModel.entries = []
         XCTAssertTrue(viewModel.rows.isEmpty)
+    }
+
+    func testCanSetMissedPicks_adminViewingOtherMember() {
+        XCTAssertTrue(makeMissedPickViewModel(viewedUserID: MockData.otherUserID, currentUserID: MockData.adminUserID).canSetMissedPicks)
+    }
+
+    func testCanSetMissedPicks_falseForAdminsOwnHistory() {
+        XCTAssertFalse(makeMissedPickViewModel(viewedUserID: MockData.adminUserID, currentUserID: MockData.adminUserID).canSetMissedPicks)
+    }
+
+    func testCanSetMissedPicks_falseForNonAdmin() {
+        XCTAssertFalse(makeMissedPickViewModel(viewedUserID: MockData.thirdUserID, currentUserID: MockData.otherUserID).canSetMissedPicks)
+    }
+
+    func testSetMissedPick_gradesPickReloadsHistoryAndNotifies() async throws {
+        var notified = false
+        let vm = makeMissedPickViewModel(
+            viewedUserID: MockData.otherUserID,
+            currentUserID: MockData.adminUserID,
+            onMissedPickSet: { notified = true }
+        )
+        await vm.loadHistory()
+        let forfeit = try XCTUnwrap(vm.entries.first)
+        XCTAssertTrue(forfeit.isForfeit)
+
+        // game-4: Bills -4.5 won 27-14, so the Bills covered.
+        await vm.setMissedPick(forfeit, pickedTeam: "Buffalo Bills")
+
+        XCTAssertNil(vm.missedPickErrorMessage)
+        XCTAssertFalse(vm.entries[0].isForfeit)
+        XCTAssertEqual(vm.entries[0].pickedTeam, "Buffalo Bills")
+        XCTAssertEqual(vm.entries[0].result, .win)
+        XCTAssertTrue(notified)
+    }
+
+    func testSetMissedPick_failureSetsErrorAndDoesNotNotify() async throws {
+        var notified = false
+        let vm = makeMissedPickViewModel(
+            viewedUserID: MockData.otherUserID,
+            currentUserID: MockData.adminUserID,
+            onMissedPickSet: { notified = true }
+        )
+        await vm.loadHistory()
+        let forfeit = try XCTUnwrap(vm.entries.first)
+        await vm.setMissedPick(forfeit, pickedTeam: "Buffalo Bills")
+        notified = false
+
+        // The pick is no longer missed, so setting it a second time is rejected.
+        await vm.setMissedPick(forfeit, pickedTeam: "Miami Dolphins")
+
+        XCTAssertNotNil(vm.missedPickErrorMessage)
+        XCTAssertFalse(notified)
+        XCTAssertEqual(vm.entries[0].pickedTeam, "Buffalo Bills")
+    }
+
+    private func makeMissedPickViewModel(
+        viewedUserID: String,
+        currentUserID: String,
+        onMissedPickSet: @escaping () async -> Void = {}
+    ) -> PlayerHistoryViewModel {
+        let forfeit = Pick(
+            id: "forfeit-1", userID: viewedUserID, gameID: "game-4", groupID: MockData.group.id,
+            pickedTeam: "", isSuperdog: false, result: .loss, isForfeit: true,
+            createdAt: Date(), updatedAt: Date()
+        )
+        return PlayerHistoryViewModel(
+            group: MockData.group,
+            userID: viewedUserID,
+            displayName: "Bob",
+            currentUserID: currentUserID,
+            pickRepository: MockPickRepository(picks: [forfeit]),
+            onMissedPickSet: onMissedPickSet
+        )
     }
 
     private func makeEntry(result: PickResult, isSuperdog: Bool = false) -> PickHistoryEntry {

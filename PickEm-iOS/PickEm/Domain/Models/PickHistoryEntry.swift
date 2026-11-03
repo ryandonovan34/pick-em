@@ -24,4 +24,10 @@ struct PickHistoryEntry: Identifiable, Equatable, Hashable {
 
     var underdogTeam: String { favoriteTeam == homeTeam ? awayTeam : homeTeam }
     var pickedFavorite: Bool { pickedTeam == favoriteTeam }
+
+    /// e.g. "Minnesota Vikings +3.5" — the spread this team would be graded on.
+    func spreadLabel(for team: String) -> String {
+        let sign = team == favoriteTeam ? "-" : "+"
+        return "\(team) \(sign)\(String(format: "%.1f", abs(spread)))"
+    }
 }

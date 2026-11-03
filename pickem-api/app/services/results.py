@@ -141,6 +141,24 @@ def _create_forfeit_picks(game_id: uuid.UUID, picked: set[tuple[uuid.UUID, uuid.
     return forfeited
 
 
+def resolve_forfeit(pick: Pick, game: Game, picked_team: str, session: Session) -> Pick:
+    """
+    Replace a forfeit with a real pick after the fact: set the team, grade it
+    against the game's final score, and recompute the member's standing.
+
+    This runs in the caller's transaction — commit/rollback is the caller's responsibility.
+    """
+    pick.picked_team = picked_team
+    pick.is_forfeit = False
+    pick.result = _pick_result(pick, game, game.home_score, game.away_score)
+    pick.updated_at = datetime.now(timezone.utc)
+    session.add(pick)
+    session.flush()
+
+    _recompute_standing(pick.user_id, pick.group_id, session)
+    return pick
+
+
 def process_game_result(
     game_id: uuid.UUID,
     home_score: int,
