@@ -1,7 +1,11 @@
 import Foundation
 
 final class MockPickRepository: PickRepositoryProtocol {
-    private var picks: [Pick] = MockData.picks
+    private var picks: [Pick]
+
+    init(picks: [Pick] = MockData.picks) {
+        self.picks = picks
+    }
 
     func fetchPicks(groupID: String, weekID: String) async throws -> [Pick] {
         picks.filter { $0.groupID == groupID }
@@ -72,6 +76,35 @@ final class MockPickRepository: PickRepositoryProtocol {
             pickedTeam: pickedTeam,
             isSuperdog: isSuperdog,
             result: existing.result,
+            createdAt: existing.createdAt,
+            updatedAt: Date()
+        )
+        picks[index] = updated
+        return updated
+    }
+
+    func setMissedPick(groupID: String, pickID: String, pickedTeam: String) async throws -> Pick {
+        guard let index = picks.firstIndex(where: { $0.id == pickID && $0.groupID == groupID }),
+              let game = MockData.games.first(where: { $0.id == picks[index].gameID }),
+              let homeScore = game.homeScore, let awayScore = game.awayScore else {
+            throw RepositoryError.notFound
+        }
+        let existing = picks[index]
+        guard existing.isForfeit else {
+            throw RepositoryError.conflict("This pick wasn't missed, so it can't be changed.")
+        }
+        let favoriteMargin = game.favoriteTeam == game.homeTeam ? homeScore - awayScore : awayScore - homeScore
+        let favoriteCovered = Double(favoriteMargin) > abs(game.spread)
+        let won = (pickedTeam == game.favoriteTeam) == favoriteCovered
+        let updated = Pick(
+            id: existing.id,
+            userID: existing.userID,
+            gameID: existing.gameID,
+            groupID: existing.groupID,
+            pickedTeam: pickedTeam,
+            isSuperdog: false,
+            result: won ? .win : .loss,
+            isForfeit: false,
             createdAt: existing.createdAt,
             updatedAt: Date()
         )

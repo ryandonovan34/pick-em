@@ -20,8 +20,9 @@ from sqlmodel import Session, func, select
 from app.auth.dependencies import get_current_user
 from app.database import get_session
 from app.models import Game, Group, GroupMember, Pick, SlateGame, User, Week
-from app.routers.groups import _require_member
-from app.schemas.pick import PickCreate, PickHistoryEntry, PickRead, PickUpdate
+from app.routers.groups import _require_admin, _require_member
+from app.schemas.pick import MissedPickSet, PickCreate, PickHistoryEntry, PickRead, PickUpdate
+from app.services.results import resolve_forfeit
 
 # Prefixed with /picks in main.py
 router = APIRouter()
@@ -176,6 +177,47 @@ def update_pick(
     pick.is_superdog = body.is_superdog
     pick.updated_at = datetime.now(timezone.utc)
     session.add(pick)
+    session.commit()
+    session.refresh(pick)
+    return pick
+
+
+@group_picks_router.put("/groups/{group_id}/picks/{pick_id}/missed", response_model=PickRead)
+def set_missed_pick(
+    group_id: uuid.UUID,
+    pick_id: uuid.UUID,
+    body: MissedPickSet,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Pick:
+    """
+    Group admin only: set the team for another member's missed pick (a forfeit),
+    grade it against the final score, and update their standing.
+
+    Picks the member actually made can't be changed through this endpoint, and
+    neither can the admin's own missed picks. Can't be declared a superdog.
+    """
+    group = _require_member(group_id, current_user, session)
+    _require_admin(group, current_user)
+
+    pick = session.get(Pick, pick_id)
+    if pick is None or pick.group_id != group_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pick not found.")
+    if pick.user_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can't set your own missed picks.")
+    if not pick.is_forfeit:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This pick wasn't missed, so it can't be changed.")
+
+    game = session.get(Game, pick.game_id)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+    if body.picked_team not in (game.home_team, game.away_team):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Pick must be {game.away_team} or {game.home_team}.",
+        )
+
+    resolve_forfeit(pick, game, body.picked_team, session)
     session.commit()
     session.refresh(pick)
     return pick

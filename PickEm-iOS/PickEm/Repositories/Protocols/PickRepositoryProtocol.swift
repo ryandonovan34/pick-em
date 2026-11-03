@@ -8,4 +8,7 @@ protocol PickRepositoryProtocol {
     func fetchPickHistory(groupID: String, userID: String) async throws -> [PickHistoryEntry]
     func submitPick(gameID: String, groupID: String, pickedTeam: String, isSuperdog: Bool) async throws -> Pick
     func updatePick(id: String, pickedTeam: String, isSuperdog: Bool) async throws -> Pick
+    /// Group admin only: sets the team for another member's missed pick, which
+    /// the server grades against the final score.
+    func setMissedPick(groupID: String, pickID: String, pickedTeam: String) async throws -> Pick
 }

@@ -173,6 +173,7 @@ Slate modifications are locked once the first game of the slate has kicked off.
 |--------|------|------|-------------|
 | `POST` | `/picks` | Member | Submit a pick (locked at game kickoff) |
 | `PUT` | `/picks/{id}` | Owner | Update a pick (locked at kickoff) |
+| `PUT` | `/groups/{id}/picks/{pick_id}/missed` | Admin | Set another member's missed pick after the fact; grades it and updates their standing |
 | `GET` | `/groups/{id}/weeks/{week_id}/picks` | Member | Picks for a week; blind_picks visibility enforced server-side |
 
 ### Standings

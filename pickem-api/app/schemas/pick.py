@@ -17,6 +17,10 @@ class PickUpdate(BaseModel):
     is_superdog: bool = False
 
 
+class MissedPickSet(BaseModel):
+    picked_team: str
+
+
 class PickRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID

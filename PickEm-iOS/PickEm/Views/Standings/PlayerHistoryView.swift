@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerHistoryView: View {
     @State private var viewModel: PlayerHistoryViewModel
+    @State private var entryToSet: PickHistoryEntry?
 
     /// Owns its view model via @State rather than receiving an
     /// already-constructed instance, so the model's identity survives
@@ -10,9 +11,21 @@ struct PlayerHistoryView: View {
     /// getting silently replaced by a fresh, still-empty instance after the
     /// original one had already finished loading, discarding the fetched
     /// data on screen while `.onLoad`'s once-only guard prevented refetching.
-    init(group: Group, userID: String, displayName: String, pickRepository: any PickRepositoryProtocol) {
+    init(
+        group: Group,
+        userID: String,
+        displayName: String,
+        currentUserID: String,
+        pickRepository: any PickRepositoryProtocol,
+        onMissedPickSet: @escaping () async -> Void = {}
+    ) {
         _viewModel = State(wrappedValue: PlayerHistoryViewModel(
-            group: group, userID: userID, displayName: displayName, pickRepository: pickRepository
+            group: group,
+            userID: userID,
+            displayName: displayName,
+            currentUserID: currentUserID,
+            pickRepository: pickRepository,
+            onMissedPickSet: onMissedPickSet
         ))
     }
 
@@ -39,6 +52,32 @@ struct PlayerHistoryView: View {
         .peNavBar()
         .refreshable { await viewModel.loadHistory() }
         .onLoad { await viewModel.loadHistory() }
+        .confirmationDialog(
+            "Set \(viewModel.displayName)'s Pick",
+            isPresented: Binding(get: { entryToSet != nil }, set: { if !$0 { entryToSet = nil } }),
+            titleVisibility: .visible,
+            presenting: entryToSet
+        ) { entry in
+            ForEach([entry.awayTeam, entry.homeTeam], id: \.self) { team in
+                Button(entry.spreadLabel(for: team)) {
+                    Task { await viewModel.setMissedPick(entry, pickedTeam: team) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("This is graded against the final score and updates the standings right away. It can't be changed afterward.")
+        }
+        .alert(
+            "Couldn't Set Pick",
+            isPresented: Binding(
+                get: { viewModel.missedPickErrorMessage != nil },
+                set: { if !$0 { viewModel.missedPickErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.missedPickErrorMessage ?? "")
+        }
     }
 
     private var historyList: some View {
@@ -59,7 +98,11 @@ struct PlayerHistoryView: View {
             .listRowSeparator(.hidden)
 
             ForEach(viewModel.rows) { row in
-                PlayerHistoryRowView(row: row)
+                PlayerHistoryRowView(
+                    row: row,
+                    isSettingPick: viewModel.isSettingMissedPick,
+                    onSetPick: viewModel.canSetMissedPicks && row.entry.isForfeit ? { entryToSet = row.entry } : nil
+                )
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -72,6 +115,8 @@ struct PlayerHistoryView: View {
 
 private struct PlayerHistoryRowView: View {
     let row: PlayerHistoryRow
+    let isSettingPick: Bool
+    let onSetPick: (() -> Void)?
 
     private var entry: PickHistoryEntry { row.entry }
 
@@ -114,6 +159,15 @@ private struct PlayerHistoryRowView: View {
                         .foregroundStyle(AdaptiveColor.peOnSurfaceVar)
                 }
                 .foregroundStyle(resultColor)
+
+                if let onSetPick {
+                    Button("SET PICK", action: onSetPick)
+                        .font(.peLabelBold())
+                        .tracking(1)
+                        .foregroundStyle(AdaptiveColor.pePrimary)
+                        .buttonStyle(.borderless)
+                        .disabled(isSettingPick)
+                }
             }
             .padding(14)
         }
@@ -164,6 +218,7 @@ private struct PlayerHistoryRowView: View {
             group: MockData.group,
             userID: MockData.currentUserID,
             displayName: "Alice",
+            currentUserID: MockData.currentUserID,
             pickRepository: MockPickRepository()
         )
     }
